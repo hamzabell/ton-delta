@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/lib/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String   @id @default(uuid())
+  telegramId     BigInt   @unique
+  username       String?
+  walletAddress  String?
+  isFoundingMember Boolean @default(false)
+  referralCode   String   @unique
+  referredBy     String?  // ID of the referrer
+
+  deposits       Deposit[]
+  positions      Position[]
+}
+
+model Strategy {
+  id             String   @id @default(uuid())
+  ticker         String   // "DOGE"
+  name           String   // "DOGE Crusher"
+  riskLevel      String   // "High", "Low"
+
+  // Real-time Data
+  currentApy     Float    // Updated every 8 hours
+  tvl            Float    // Total Value Locked
+
+  // Configuration
+  stonfiPool     String   // Address
+  cexSymbol      String   // "DOGE/USDT:USDT"
+}
+
+model Deposit {
+  id        String   @id @default(uuid())
+  amount    Float
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
+}
+
+model Position {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  strategyId String
+
+  principal Float    // Initial Deposit
+  shares    Float    // LP Tokens owned
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FundingEvent {
+  id          String   @id @default(uuid())
+  strategyId  String
+  amount      Float    // Amount earned in USDT
+  timestamp   DateTime @default(now())
+}
