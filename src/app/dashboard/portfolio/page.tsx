@@ -9,7 +9,8 @@ import clsx from "clsx";
 export default function PortfolioPage() {
   const wallet = useTonWallet();
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<"fund" | "withdraw" | null>(null);
+  const [activeModal, setActiveModal] = useState<"fund" | "withdraw" | "redeem" | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<any>(null);
 
   // Mock Data
   const protocolBalance = 1042.50;
@@ -90,22 +91,48 @@ export default function PortfolioPage() {
           <h2 className="text-xs font-bold text-slate-500 px-1 uppercase tracking-widest">Live Positions</h2>
           
           <div className="bg-[#0B1221] border border-slate-800 rounded-3xl overflow-hidden divide-y divide-slate-800/50 shadow-xl">
-              <Link href="/dashboard/trade/ton-usdt" className="p-6 flex items-center justify-between hover:bg-slate-900/40 transition-colors group">
-                  <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]">T</div>
-                      <div>
-                          <p className="font-bold text-white text-lg group-hover:text-emerald-400 transition-colors">TON / USDT</p>
+              <div className="p-5 sm:p-6 hover:bg-slate-900/40 transition-colors group">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      {/* Left: Info Section */}
+                      <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] shrink-0">T</div>
+                          <div>
+                              <p className="font-bold text-white text-lg group-hover:text-emerald-400 transition-colors">TON / USDT</p>
+                              <div className="flex items-center gap-2">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                 <p className="text-xs text-slate-500 font-medium">Regular Basis • USDT Hedge</p>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Right: Value & Actions Section */}
+                      <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-800/50">
+                          <div className="text-left sm:text-right">
+                              <p className="font-bold text-white text-xl sm:text-lg tracking-tight">$1,042.50</p>
+                              <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider">+12.4 TON (Yield)</p>
+                          </div>
+                          
                           <div className="flex items-center gap-2">
-                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                             <p className="text-xs text-slate-500 font-medium">Regular Basis • USDT Hedge</p>
+                              <Link 
+                                href="/dashboard/trade/ton-usdt"
+                                className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/10 transition-all active:scale-95"
+                              >
+                                  Manage
+                              </Link>
+                              <button 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setSelectedPosition({ name: "TON / USDT", balance: 1042.50 });
+                                    setActiveModal("redeem");
+                                }}
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-black uppercase px-4 py-2.5 rounded-xl border border-slate-700 transition-all active:scale-95"
+                              >
+                                  Redeem
+                              </button>
                           </div>
                       </div>
                   </div>
-                  <div className="text-right">
-                      <p className="font-bold text-white text-lg">$1,042.50</p>
-                      <p className="text-xs text-emerald-400 font-medium">+12.4 TON (Yield)</p>
-                  </div>
-              </Link>
+              </div>
           </div>
       </div>
 
@@ -148,7 +175,7 @@ export default function PortfolioPage() {
                <div className="bg-[#0B1221] w-full max-w-sm border border-slate-800 rounded-3xl p-6 space-y-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
                     <div className="flex justify-between items-center">
                         <h3 className="text-xl font-bold text-white">
-                            {activeModal === "fund" ? "Fund Wallet" : "Withdraw Funds"}
+                            {activeModal === "fund" ? "Fund Wallet" : activeModal === "withdraw" ? "Withdraw Funds" : "Redeem Position"}
                         </h3>
                         <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"><X className="w-5 h-5" /></button>
                     </div>
@@ -169,7 +196,7 @@ export default function PortfolioPage() {
                                 <ExternalLink className="w-4 h-4" /> Buy TON
                             </a>
                         </div>
-                    ) : (
+                     ) : activeModal === "withdraw" ? (
                         <div className="space-y-6">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Select Asset</label>
@@ -183,11 +210,44 @@ export default function PortfolioPage() {
                                 <input type="number" placeholder="0.00" className="w-full bg-slate-900 border border-slate-800 text-white p-3 rounded-xl font-bold focus:outline-none focus:border-emerald-500 transition-colors" />
                                 <p className="text-right text-[10px] text-slate-500 font-bold">Available: {protocolBalance} USD</p>
                             </div>
-                            <button className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
-                                Confirm Withdrawal
+                             <button className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
+                                 Confirm Withdrawal
+                             </button>
+                         </div>
+                     ) : (
+                        <div className="space-y-6">
+                            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-bold text-blue-400 uppercase">Redeeming From</p>
+                                    <p className="font-bold text-white">{selectedPosition?.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Available</p>
+                                    <p className="font-bold text-white">${selectedPosition?.balance}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Amount to Redeem</label>
+                                <div className="relative">
+                                    <input type="number" placeholder="0.00" className="w-full bg-slate-900 border border-slate-800 text-white p-3 rounded-xl font-bold focus:outline-none focus:border-red-500 transition-colors" defaultValue={selectedPosition?.balance} />
+                                    <button className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 hover:text-emerald-300">MAX</button>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-slate-900/50 rounded-xl space-y-2 border border-slate-800/50">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-500">Unrolling Spot</span>
+                                    <span className="text-white font-bold">~142.5 TON</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-500">Closing Hedge</span>
+                                    <span className="text-white font-bold">~1,042.5 USDT</span>
+                                </div>
+                            </div>
+                            <button className="w-full py-4 bg-red-500 hover:bg-red-400 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95 uppercase tracking-wider text-sm">
+                                Confirm Redemption
                             </button>
                         </div>
-                    )}
+                     )}
                </div>
           </div>
       )}

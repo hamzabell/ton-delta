@@ -70,7 +70,7 @@ export default function TradePage() {
 
   // Trading State
   const [amount, setAmount] = useState([0]);
-  const [mode, setMode] = useState<"invest" | "redeem">("invest");
+  const [mode, setMode] = useState<"invest">("invest");
   const [aprStability, setAprStability] = useState([50]);
   const [stopLoss, setStopLoss] = useState([5]);
   const [direction, setDirection] = useState<"regular" | "reverse">("regular");
@@ -313,29 +313,12 @@ export default function TradePage() {
      )}
       
       {/* Trading Interface */}
-      <div className="space-y-6">
-          {/* Only show toggle if user has a position */}
-          {myPosition > 0 && (
-              <div className="bg-[#0B1221] p-1 rounded-2xl flex border border-slate-800/50">
-                  <button 
-                    onClick={() => setMode("invest")}
-                    className={clsx("flex-1 py-3.5 rounded-xl text-sm font-bold transition-all", mode === "invest" ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-white")}
-                  >
-                      Add More
-                  </button>
-                  <button 
-                    onClick={() => setMode("redeem")}
-                    className={clsx("flex-1 py-3.5 rounded-xl text-sm font-bold transition-all", mode === "redeem" ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-white")}
-                  >
-                      Redeem
-                  </button>
-              </div>
-          )}
+      <div className="space-y-6 pt-4">
 
           <div className="bg-[#0B1221] border border-slate-800/50 rounded-3xl p-8 space-y-6">
                <div className="text-center">
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-2">
-                      Amount to {myPosition === 0 ? "Deploy" : mode === "invest" ? "Add" : "Redeem"}
+                      Amount to {myPosition === 0 ? "Deploy" : "Add to Position"}
                   </p>
                    <div className="flex items-center justify-center gap-1">
                       <span className="text-2xl text-slate-600 font-light">$</span>
@@ -384,7 +367,7 @@ export default function TradePage() {
                    </div>
                )}
 
-               <Slider value={amount} onValueChange={setAmount} max={mode === 'invest' ? maxBalance : myPosition} step={10} className="py-4" />
+               <Slider value={amount} onValueChange={setAmount} max={maxBalance} step={10} className="py-4" />
 
                {/* APR Stability */}
                {mode === 'invest' && (
@@ -455,13 +438,13 @@ export default function TradePage() {
 
                <button 
                  onClick={handleConfirm}
-                 disabled={isConfirming || (mode === 'redeem' && amount[0] > myPosition)}
+                 disabled={isConfirming}
                  className={clsx(
                      "w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95",
                      isConfirming ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
                  )}
                >
-                   {isConfirming ? "Processing..." : `${myPosition === 0 ? 'Deploy Position' : mode === 'invest' ? 'Add to Position' : 'Redeem'} ($${amount[0]})`}
+                   {isConfirming ? "Processing..." : `${myPosition === 0 ? 'Deploy Position' : 'Add to Position'} ($${amount[0]})`}
                </button>
           </div>
       </div>
