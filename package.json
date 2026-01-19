@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@prisma/client": "^7.2.0",
+    "@swap-coffee/sdk": "^1.5.4",
     "@telegram-apps/sdk": "^3.11.8",
     "@tonconnect/ui-react": "^2.3.1",
     "bullmq": "^5.66.5",
@@ -23,7 +24,11 @@
     "prisma": "^7.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "rxjs": "^7.8.2",
     "tailwind-merge": "^3.4.0",
+    "ton": "^13.9.0",
+    "ton-core": "^0.53.0",
+    "ton-crypto": "^3.2.0",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {

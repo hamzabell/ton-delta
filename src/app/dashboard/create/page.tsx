@@ -59,12 +59,12 @@ export default function CreateCustomTradePage() {
   return (
     <div className="pt-2 pb-24 space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard" className="p-2 bg-slate-900 rounded-full text-slate-400 hover:text-white transition-colors">
+        <Link href="/dashboard" className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white transition-colors border border-white/10">
            <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-            <h1 className="text-2xl font-bold text-white">Create Custom Trade</h1>
-            <p className="text-sm text-slate-400">Configure your own basis trading opportunity</p>
+            <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">Custom Vault</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mt-2">Engineered by swap.coffee</p>
         </div>
       </div>
 
@@ -92,54 +92,35 @@ export default function CreateCustomTradePage() {
                   </button>
               </div>
 
-              {/* Direction Selection */}
+              {/* Direction Selection (Fixed for V1) */}
               <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Basis Direction</label>
-                  <div className="grid grid-cols-2 gap-3">
-                      <button 
-                          type="button"
-                          onClick={() => setFormData({...formData, direction: "regular"})}
-                          className={clsx(
-                              "p-4 rounded-xl border text-left transition-all",
-                              formData.direction === "regular" 
-                                  ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
-                                  : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700"
-                          )}
-                      >
-                          <div className="text-sm font-black uppercase mb-1">Regular Basis</div>
-                          <div className="text-[10px] leading-tight opacity-80">Long Spot + Short Perp</div>
-                      </button>
-                      <button 
-                          type="button"
-                          onClick={() => setFormData({...formData, direction: "reverse"})}
-                          className={clsx(
-                              "p-4 rounded-xl border text-left transition-all",
-                              formData.direction === "reverse" 
-                                  ? "bg-red-500/10 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.1)]" 
-                                  : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700"
-                          )}
-                      >
-                          <div className="text-sm font-black uppercase mb-1">Reverse Basis</div>
-                          <div className="text-[10px] leading-tight opacity-80">Short Spot + Long Perp</div>
-                      </button>
+                  <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Basis Direction</label>
+                      <span className="text-[10px] font-black text-[#E2FF00] uppercase tracking-widest bg-[#E2FF00]/10 px-2 py-0.5 rounded italic">V1 Standard</span>
+                  </div>
+                  <div className="grid grid-cols-1">
+                      <div className="p-5 rounded-2xl border border-[#E2FF00]/20 bg-[#E2FF00]/5 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
+                          <div className="text-sm font-black uppercase mb-1 italic">Regular Basis</div>
+                          <div className="text-[10px] leading-tight opacity-60 uppercase tracking-widest font-black">Long Spot + Short Perp (Fully Hedged)</div>
+                      </div>
                   </div>
               </div>
 
               {/* Amount Input */}
               <div className="space-y-4">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Investment Amount</label>
-                  <div className="text-center bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
-                      <div className="flex items-center justify-center gap-1">
-                         <span className="text-2xl text-slate-600 font-light">$</span>
-                         <input 
-                           type="number" 
-                           value={formData.amount[0]}
-                           onChange={(e) => setFormData({...formData, amount: [parseFloat(e.target.value) || 0]})}
-                           className="bg-transparent text-4xl font-bold text-white text-center w-40 focus:outline-none placeholder-slate-700"
-                           placeholder="0"
-                         />
-                      </div>
-                  </div>
+                   <div className="text-center bg-white/[0.03] rounded-[2rem] p-8 border border-white/5 group-hover:border-[#E2FF00]/30 transition-all">
+                       <div className="flex items-center justify-center gap-2">
+                          <span className="text-4xl text-white/20 font-black italic">$</span>
+                          <input 
+                            type="number" 
+                            value={formData.amount[0]}
+                            onChange={(e) => setFormData({...formData, amount: [parseFloat(e.target.value) || 0]})}
+                            className="bg-transparent text-5xl font-black text-white text-center w-full focus:outline-none placeholder-white/5 italic tracking-tighter"
+                            placeholder="0"
+                          />
+                       </div>
+                   </div>
                   <Slider 
                       value={formData.amount} 
                       onValueChange={(val) => setFormData({...formData, amount: val})} 
@@ -200,7 +181,7 @@ export default function CreateCustomTradePage() {
               </div>
 
               {/* Submit Button */}
-              <div className="pt-4">
+              <div className="pt-6">
                   {!wallet ? (
                        <div className="flex justify-center">
                            <TonConnectButton />
@@ -210,15 +191,15 @@ export default function CreateCustomTradePage() {
                            type="submit"
                            disabled={isSubmitting || formData.amount[0] === 0}
                            className={clsx(
-                               "w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2",
+                               "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2",
                                isSubmitting || formData.amount[0] === 0
-                                   ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                                   : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
+                                   ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/5"
+                                   : "bg-[#E2FF00] text-[#020617] hover:scale-105 shadow-[0_20px_40px_rgba(226,255,0,0.15)]"
                            )}
                        >
-                           {isSubmitting ? "Deploying..." : (
+                           {isSubmitting ? "Deploying Vault..." : (
                                <>
-                                   <Rocket className="w-5 h-5" /> Deploy Custom Trade
+                                   <Rocket className="w-4 h-4" /> Deploy Delta Vault
                                </>
                            )}
                        </button>

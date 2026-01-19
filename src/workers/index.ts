@@ -1,11 +1,12 @@
 import { Worker } from 'bullmq';
 import { redisConfig } from './config';
-import { fundingQueue, riskQueue, QUEUE_NAMES } from './queues';
+import { fundingQueue, riskQueue, basisQueue, QUEUE_NAMES } from './queues';
 import { processFundingJob } from './jobs/funding';
 import { processRiskJob } from './jobs/risk';
 import { processDepositJob } from './jobs/deposits';
+import { processBasisJob } from './jobs/basisTrade';
 
-console.log('🚀 Starting Neutron Backend Workers...');
+console.log('🚀 Starting Ton Delta Backend Workers...');
 
 // 1. Funding Harvester Worker
 const fundingWorker = new Worker(QUEUE_NAMES.FUNDING, processFundingJob, {
@@ -27,6 +28,13 @@ const depositWorker = new Worker(QUEUE_NAMES.DEPOSIT, processDepositJob, {
 depositWorker.on('completed', (job) => console.log(`[Deposit] Job ${job.id} completed.`));
 depositWorker.on('failed', (job, err) => console.error(`[Deposit] Job ${job?.id} failed: ${err.message}`));
 
+// 4. Basis Arbitrage Worker
+const basisWorker = new Worker(QUEUE_NAMES.BASIS, processBasisJob, {
+  connection: redisConfig,
+});
+basisWorker.on('completed', (job) => console.log(`[Basis] Job ${job.id} completed.`));
+basisWorker.on('failed', (job, err) => console.error(`[Basis] Job ${job?.id} failed: ${err.message}`));
+
 
 // --- SCHEDULER (Initialize Repeatable Jobs) ---
 async function initSchedulers() {
@@ -47,6 +55,14 @@ async function initSchedulers() {
     },
   });
   console.log('✅ Scheduled Risk Manager (Every 1 minute)');
+
+  // Basis Monitor: Every 1 minute
+  await basisQueue.add('monitor-basis', {}, {
+      repeat: {
+          pattern: '* * * * *', // Every minute
+      }
+  });
+  console.log('✅ Scheduled Basis Monitor (Every 1 minute)');
 }
 
 initSchedulers().catch(console.error);
@@ -57,5 +73,6 @@ process.on('SIGINT', async () => {
     await fundingWorker.close();
     await riskWorker.close();
     await depositWorker.close();
+    await basisWorker.close();
     process.exit(0);
 });

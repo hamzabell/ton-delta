@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  /* Slate-950 */
+  /* Palette Finance Dark */
   --background: #020617;
-  /* White text */
   --foreground: #ffffff;
 
   /* Accents */
+  --color-neon-lime: #E2FF00;
   --color-emerald-400: #34d399;
   --color-rose-500: #f43f5e;
   --color-slate-800: #1e293b;

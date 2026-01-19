@@ -28,6 +28,11 @@ export type User = Prisma.UserModel
  */
 export type Strategy = Prisma.StrategyModel
 /**
+ * Model Transaction
+ * 
+ */
+export type Transaction = Prisma.TransactionModel
+/**
  * Model Deposit
  * 
  */

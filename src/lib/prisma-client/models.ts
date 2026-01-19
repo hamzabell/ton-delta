@@ -10,6 +10,7 @@
  */
 export type * from './models/User'
 export type * from './models/Strategy'
+export type * from './models/Transaction'
 export type * from './models/Deposit'
 export type * from './models/Position'
 export type * from './models/FundingEvent'

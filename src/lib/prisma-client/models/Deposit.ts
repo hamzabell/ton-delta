@@ -381,10 +381,6 @@ export type DepositUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.DepositScalarWhereInput | Prisma.DepositScalarWhereInput[]
 }
 
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
-}
-
 export type DepositCreateWithoutUserInput = {
   id?: string
   amount: number

@@ -40,33 +40,42 @@ export type StrategyMinAggregateOutputType = {
   id: string | null
   ticker: string | null
   name: string | null
+  type: string | null
   riskLevel: string | null
   currentApy: number | null
   tvl: number | null
-  stonfiPool: string | null
+  fromAsset: string | null
+  toAsset: string | null
   cexSymbol: string | null
+  futureSymbol: string | null
 }
 
 export type StrategyMaxAggregateOutputType = {
   id: string | null
   ticker: string | null
   name: string | null
+  type: string | null
   riskLevel: string | null
   currentApy: number | null
   tvl: number | null
-  stonfiPool: string | null
+  fromAsset: string | null
+  toAsset: string | null
   cexSymbol: string | null
+  futureSymbol: string | null
 }
 
 export type StrategyCountAggregateOutputType = {
   id: number
   ticker: number
   name: number
+  type: number
   riskLevel: number
   currentApy: number
   tvl: number
-  stonfiPool: number
+  fromAsset: number
+  toAsset: number
   cexSymbol: number
+  futureSymbol: number
   _all: number
 }
 
@@ -85,33 +94,42 @@ export type StrategyMinAggregateInputType = {
   id?: true
   ticker?: true
   name?: true
+  type?: true
   riskLevel?: true
   currentApy?: true
   tvl?: true
-  stonfiPool?: true
+  fromAsset?: true
+  toAsset?: true
   cexSymbol?: true
+  futureSymbol?: true
 }
 
 export type StrategyMaxAggregateInputType = {
   id?: true
   ticker?: true
   name?: true
+  type?: true
   riskLevel?: true
   currentApy?: true
   tvl?: true
-  stonfiPool?: true
+  fromAsset?: true
+  toAsset?: true
   cexSymbol?: true
+  futureSymbol?: true
 }
 
 export type StrategyCountAggregateInputType = {
   id?: true
   ticker?: true
   name?: true
+  type?: true
   riskLevel?: true
   currentApy?: true
   tvl?: true
-  stonfiPool?: true
+  fromAsset?: true
+  toAsset?: true
   cexSymbol?: true
+  futureSymbol?: true
   _all?: true
 }
 
@@ -205,11 +223,14 @@ export type StrategyGroupByOutputType = {
   id: string
   ticker: string
   name: string
+  type: string
   riskLevel: string
   currentApy: number
   tvl: number
-  stonfiPool: string
-  cexSymbol: string
+  fromAsset: string | null
+  toAsset: string | null
+  cexSymbol: string | null
+  futureSymbol: string | null
   _count: StrategyCountAggregateOutputType | null
   _avg: StrategyAvgAggregateOutputType | null
   _sum: StrategySumAggregateOutputType | null
@@ -239,22 +260,28 @@ export type StrategyWhereInput = {
   id?: Prisma.StringFilter<"Strategy"> | string
   ticker?: Prisma.StringFilter<"Strategy"> | string
   name?: Prisma.StringFilter<"Strategy"> | string
+  type?: Prisma.StringFilter<"Strategy"> | string
   riskLevel?: Prisma.StringFilter<"Strategy"> | string
   currentApy?: Prisma.FloatFilter<"Strategy"> | number
   tvl?: Prisma.FloatFilter<"Strategy"> | number
-  stonfiPool?: Prisma.StringFilter<"Strategy"> | string
-  cexSymbol?: Prisma.StringFilter<"Strategy"> | string
+  fromAsset?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  toAsset?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  cexSymbol?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  futureSymbol?: Prisma.StringNullableFilter<"Strategy"> | string | null
 }
 
 export type StrategyOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   tvl?: Prisma.SortOrder
-  stonfiPool?: Prisma.SortOrder
-  cexSymbol?: Prisma.SortOrder
+  fromAsset?: Prisma.SortOrderInput | Prisma.SortOrder
+  toAsset?: Prisma.SortOrderInput | Prisma.SortOrder
+  cexSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
+  futureSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
 }
 
 export type StrategyWhereUniqueInput = Prisma.AtLeast<{
@@ -264,22 +291,28 @@ export type StrategyWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.StrategyWhereInput | Prisma.StrategyWhereInput[]
   ticker?: Prisma.StringFilter<"Strategy"> | string
   name?: Prisma.StringFilter<"Strategy"> | string
+  type?: Prisma.StringFilter<"Strategy"> | string
   riskLevel?: Prisma.StringFilter<"Strategy"> | string
   currentApy?: Prisma.FloatFilter<"Strategy"> | number
   tvl?: Prisma.FloatFilter<"Strategy"> | number
-  stonfiPool?: Prisma.StringFilter<"Strategy"> | string
-  cexSymbol?: Prisma.StringFilter<"Strategy"> | string
+  fromAsset?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  toAsset?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  cexSymbol?: Prisma.StringNullableFilter<"Strategy"> | string | null
+  futureSymbol?: Prisma.StringNullableFilter<"Strategy"> | string | null
 }, "id">
 
 export type StrategyOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   tvl?: Prisma.SortOrder
-  stonfiPool?: Prisma.SortOrder
-  cexSymbol?: Prisma.SortOrder
+  fromAsset?: Prisma.SortOrderInput | Prisma.SortOrder
+  toAsset?: Prisma.SortOrderInput | Prisma.SortOrder
+  cexSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
+  futureSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.StrategyCountOrderByAggregateInput
   _avg?: Prisma.StrategyAvgOrderByAggregateInput
   _max?: Prisma.StrategyMaxOrderByAggregateInput
@@ -294,99 +327,126 @@ export type StrategyScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
   ticker?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
   name?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
+  type?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
   riskLevel?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
   currentApy?: Prisma.FloatWithAggregatesFilter<"Strategy"> | number
   tvl?: Prisma.FloatWithAggregatesFilter<"Strategy"> | number
-  stonfiPool?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
-  cexSymbol?: Prisma.StringWithAggregatesFilter<"Strategy"> | string
+  fromAsset?: Prisma.StringNullableWithAggregatesFilter<"Strategy"> | string | null
+  toAsset?: Prisma.StringNullableWithAggregatesFilter<"Strategy"> | string | null
+  cexSymbol?: Prisma.StringNullableWithAggregatesFilter<"Strategy"> | string | null
+  futureSymbol?: Prisma.StringNullableWithAggregatesFilter<"Strategy"> | string | null
 }
 
 export type StrategyCreateInput = {
   id?: string
   ticker: string
   name: string
+  type: string
   riskLevel: string
   currentApy: number
   tvl: number
-  stonfiPool: string
-  cexSymbol: string
+  fromAsset?: string | null
+  toAsset?: string | null
+  cexSymbol?: string | null
+  futureSymbol?: string | null
 }
 
 export type StrategyUncheckedCreateInput = {
   id?: string
   ticker: string
   name: string
+  type: string
   riskLevel: string
   currentApy: number
   tvl: number
-  stonfiPool: string
-  cexSymbol: string
+  fromAsset?: string | null
+  toAsset?: string | null
+  cexSymbol?: string | null
+  futureSymbol?: string | null
 }
 
 export type StrategyUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   currentApy?: Prisma.FloatFieldUpdateOperationsInput | number
   tvl?: Prisma.FloatFieldUpdateOperationsInput | number
-  stonfiPool?: Prisma.StringFieldUpdateOperationsInput | string
-  cexSymbol?: Prisma.StringFieldUpdateOperationsInput | string
+  fromAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cexSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  futureSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StrategyUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   currentApy?: Prisma.FloatFieldUpdateOperationsInput | number
   tvl?: Prisma.FloatFieldUpdateOperationsInput | number
-  stonfiPool?: Prisma.StringFieldUpdateOperationsInput | string
-  cexSymbol?: Prisma.StringFieldUpdateOperationsInput | string
+  fromAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cexSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  futureSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StrategyCreateManyInput = {
   id?: string
   ticker: string
   name: string
+  type: string
   riskLevel: string
   currentApy: number
   tvl: number
-  stonfiPool: string
-  cexSymbol: string
+  fromAsset?: string | null
+  toAsset?: string | null
+  cexSymbol?: string | null
+  futureSymbol?: string | null
 }
 
 export type StrategyUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   currentApy?: Prisma.FloatFieldUpdateOperationsInput | number
   tvl?: Prisma.FloatFieldUpdateOperationsInput | number
-  stonfiPool?: Prisma.StringFieldUpdateOperationsInput | string
-  cexSymbol?: Prisma.StringFieldUpdateOperationsInput | string
+  fromAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cexSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  futureSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StrategyUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   currentApy?: Prisma.FloatFieldUpdateOperationsInput | number
   tvl?: Prisma.FloatFieldUpdateOperationsInput | number
-  stonfiPool?: Prisma.StringFieldUpdateOperationsInput | string
-  cexSymbol?: Prisma.StringFieldUpdateOperationsInput | string
+  fromAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cexSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  futureSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StrategyCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   tvl?: Prisma.SortOrder
-  stonfiPool?: Prisma.SortOrder
+  fromAsset?: Prisma.SortOrder
+  toAsset?: Prisma.SortOrder
   cexSymbol?: Prisma.SortOrder
+  futureSymbol?: Prisma.SortOrder
 }
 
 export type StrategyAvgOrderByAggregateInput = {
@@ -398,22 +458,28 @@ export type StrategyMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   tvl?: Prisma.SortOrder
-  stonfiPool?: Prisma.SortOrder
+  fromAsset?: Prisma.SortOrder
+  toAsset?: Prisma.SortOrder
   cexSymbol?: Prisma.SortOrder
+  futureSymbol?: Prisma.SortOrder
 }
 
 export type StrategyMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   tvl?: Prisma.SortOrder
-  stonfiPool?: Prisma.SortOrder
+  fromAsset?: Prisma.SortOrder
+  toAsset?: Prisma.SortOrder
   cexSymbol?: Prisma.SortOrder
+  futureSymbol?: Prisma.SortOrder
 }
 
 export type StrategySumOrderByAggregateInput = {
@@ -435,47 +501,59 @@ export type StrategySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   id?: boolean
   ticker?: boolean
   name?: boolean
+  type?: boolean
   riskLevel?: boolean
   currentApy?: boolean
   tvl?: boolean
-  stonfiPool?: boolean
+  fromAsset?: boolean
+  toAsset?: boolean
   cexSymbol?: boolean
+  futureSymbol?: boolean
 }, ExtArgs["result"]["strategy"]>
 
 export type StrategySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   ticker?: boolean
   name?: boolean
+  type?: boolean
   riskLevel?: boolean
   currentApy?: boolean
   tvl?: boolean
-  stonfiPool?: boolean
+  fromAsset?: boolean
+  toAsset?: boolean
   cexSymbol?: boolean
+  futureSymbol?: boolean
 }, ExtArgs["result"]["strategy"]>
 
 export type StrategySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   ticker?: boolean
   name?: boolean
+  type?: boolean
   riskLevel?: boolean
   currentApy?: boolean
   tvl?: boolean
-  stonfiPool?: boolean
+  fromAsset?: boolean
+  toAsset?: boolean
   cexSymbol?: boolean
+  futureSymbol?: boolean
 }, ExtArgs["result"]["strategy"]>
 
 export type StrategySelectScalar = {
   id?: boolean
   ticker?: boolean
   name?: boolean
+  type?: boolean
   riskLevel?: boolean
   currentApy?: boolean
   tvl?: boolean
-  stonfiPool?: boolean
+  fromAsset?: boolean
+  toAsset?: boolean
   cexSymbol?: boolean
+  futureSymbol?: boolean
 }
 
-export type StrategyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ticker" | "name" | "riskLevel" | "currentApy" | "tvl" | "stonfiPool" | "cexSymbol", ExtArgs["result"]["strategy"]>
+export type StrategyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ticker" | "name" | "type" | "riskLevel" | "currentApy" | "tvl" | "fromAsset" | "toAsset" | "cexSymbol" | "futureSymbol", ExtArgs["result"]["strategy"]>
 
 export type $StrategyPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Strategy"
@@ -484,11 +562,14 @@ export type $StrategyPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     id: string
     ticker: string
     name: string
+    type: string
     riskLevel: string
     currentApy: number
     tvl: number
-    stonfiPool: string
-    cexSymbol: string
+    fromAsset: string | null
+    toAsset: string | null
+    cexSymbol: string | null
+    futureSymbol: string | null
   }, ExtArgs["result"]["strategy"]>
   composites: {}
 }
@@ -915,11 +996,14 @@ export interface StrategyFieldRefs {
   readonly id: Prisma.FieldRef<"Strategy", 'String'>
   readonly ticker: Prisma.FieldRef<"Strategy", 'String'>
   readonly name: Prisma.FieldRef<"Strategy", 'String'>
+  readonly type: Prisma.FieldRef<"Strategy", 'String'>
   readonly riskLevel: Prisma.FieldRef<"Strategy", 'String'>
   readonly currentApy: Prisma.FieldRef<"Strategy", 'Float'>
   readonly tvl: Prisma.FieldRef<"Strategy", 'Float'>
-  readonly stonfiPool: Prisma.FieldRef<"Strategy", 'String'>
+  readonly fromAsset: Prisma.FieldRef<"Strategy", 'String'>
+  readonly toAsset: Prisma.FieldRef<"Strategy", 'String'>
   readonly cexSymbol: Prisma.FieldRef<"Strategy", 'String'>
+  readonly futureSymbol: Prisma.FieldRef<"Strategy", 'String'>
 }
     
 

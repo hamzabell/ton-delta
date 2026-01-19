@@ -27,6 +27,7 @@ model Strategy {
   id             String   @id @default(uuid())
   ticker         String   // "DOGE"
   name           String   // "DOGE Crusher"
+  type           String   // "FUNDING" or "BASIS"
   riskLevel      String   // "High", "Low"
 
   // Real-time Data
@@ -34,8 +35,23 @@ model Strategy {
   tvl            Float    // Total Value Locked
 
   // Configuration
-  stonfiPool     String   // Address
-  cexSymbol      String   // "DOGE/USDT:USDT"
+  fromAsset      String?  // swap.coffee "from" address (e.g. USDT)
+  toAsset        String?  // swap.coffee "to" address (e.g. TON)
+  cexSymbol      String?  // "DOGE/USDT:USDT"
+  futureSymbol   String?  // "TON-USDT-24Q1" (for BASIS)
+}
+
+model Transaction {
+  id             String   @id @default(uuid())
+  strategyId     String
+  type           String   // "SWAP", "SHORT", "REBALANCE"
+  status         String   // "PENDING", "SUCCESS", "FAILED"
+  txHash         String?
+  fromAsset      String?
+  toAsset        String?
+  amount         Float?
+  basisCaptured  Float?
+  timestamp      DateTime @default(now())
 }
 
 model Deposit {

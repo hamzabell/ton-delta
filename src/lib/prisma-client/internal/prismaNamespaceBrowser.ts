@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Strategy: 'Strategy',
+  Transaction: 'Transaction',
   Deposit: 'Deposit',
   Position: 'Position',
   FundingEvent: 'FundingEvent'
@@ -91,14 +92,33 @@ export const StrategyScalarFieldEnum = {
   id: 'id',
   ticker: 'ticker',
   name: 'name',
+  type: 'type',
   riskLevel: 'riskLevel',
   currentApy: 'currentApy',
   tvl: 'tvl',
-  stonfiPool: 'stonfiPool',
-  cexSymbol: 'cexSymbol'
+  fromAsset: 'fromAsset',
+  toAsset: 'toAsset',
+  cexSymbol: 'cexSymbol',
+  futureSymbol: 'futureSymbol'
 } as const
 
 export type StrategyScalarFieldEnum = (typeof StrategyScalarFieldEnum)[keyof typeof StrategyScalarFieldEnum]
+
+
+export const TransactionScalarFieldEnum = {
+  id: 'id',
+  strategyId: 'strategyId',
+  type: 'type',
+  status: 'status',
+  txHash: 'txHash',
+  fromAsset: 'fromAsset',
+  toAsset: 'toAsset',
+  amount: 'amount',
+  basisCaptured: 'basisCaptured',
+  timestamp: 'timestamp'
+} as const
+
+export type TransactionScalarFieldEnum = (typeof TransactionScalarFieldEnum)[keyof typeof TransactionScalarFieldEnum]
 
 
 export const DepositScalarFieldEnum = {
