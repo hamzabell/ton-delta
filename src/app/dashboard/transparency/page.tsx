@@ -52,24 +52,24 @@ export default function TransparencyPage() {
       </button>
 
       {/* Health Cards */}
-      <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Activity className="w-12 h-12" />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Activity className="w-8 h-8 sm:w-12 sm:h-12" />
               </div>
-              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Strategy Health</p>
-              <h3 className="text-4xl font-black text-white italic tracking-tighter">100.0%</h3>
-              <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-widest mt-2 italic">
+              <p className="text-[8px] sm:text-[9px] font-black text-white/20 uppercase tracking-widest mb-1 sm:mb-2 text-nowrap">Strategy Health</p>
+              <h3 className="text-2xl sm:text-4xl font-black text-white italic tracking-tighter">100.0%</h3>
+              <p className="text-[8px] sm:text-[9px] text-[#E2FF00] font-black uppercase tracking-widest mt-1 sm:mt-2 italic">
                   {selectedPair.type === "stable" ? "Delta Verified" : "Meme Alpha Verified"}
               </p>
           </div>
-          <div className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-6 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <ShieldCheck className="w-12 h-12" />
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <ShieldCheck className="w-8 h-8 sm:w-12 sm:h-12" />
               </div>
-              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">AA Verification</p>
-              <h3 className="text-4xl font-black text-white italic tracking-tighter">Secure</h3>
-              <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-widest mt-2 italic">Pamelo W5 Account</p>
+              <p className="text-[8px] sm:text-[9px] font-black text-white/20 uppercase tracking-widest mb-1 sm:mb-2 text-nowrap">AA Verification</p>
+              <h3 className="text-2xl sm:text-4xl font-black text-white italic tracking-tighter">Secure</h3>
+              <p className="text-[8px] sm:text-[9px] text-[#E2FF00] font-black uppercase tracking-widest mt-1 sm:mt-2 italic">Pamelo W5 Account</p>
           </div>
       </div>
 
