@@ -25,6 +25,8 @@ export default function TradePage() {
   const [isConfirming, setIsConfirming] = useState(false);
   
   // Non-Custodial States
+  const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionDuration, setSessionDuration] = useState("7d");
@@ -38,6 +40,14 @@ export default function TradePage() {
     }
   }, [amount]);
 
+  const handleDeployAA = () => {
+    setIsDeploying(true);
+    setTimeout(() => {
+        setIsAAContractDeployed(true);
+        setIsDeploying(false);
+    }, 2000);
+  };
+
   const handleExecute = () => {
     if (!amount) return;
     const stakeAmount = parseFloat(amount);
@@ -45,6 +55,11 @@ export default function TradePage() {
 
     if (lossLimit > stakeAmount) {
         alert("Loss Threshold cannot be higher than delegation amount.");
+        return;
+    }
+
+    if (!isAAContractDeployed) {
+        handleDeployAA();
         return;
     }
 
@@ -136,17 +151,32 @@ export default function TradePage() {
           {/* Action Button */}
           <button 
             onClick={handleExecute}
-            disabled={!amount || isConfirming}
+            disabled={!amount || isConfirming || isDeploying}
             className={clsx(
-                "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95",
-                isConfirming || !amount 
+                "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                (isConfirming || !amount || isDeploying)
                   ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/5" 
-                  : isSessionActive 
+                  : !isAAContractDeployed
                     ? "bg-[#E2FF00] text-[#020617] shadow-[0_10px_30px_rgba(226,255,0,0.15)] hover:scale-[1.02]"
-                    : "bg-white text-[#020617] hover:scale-[1.02]"
+                    : isSessionActive 
+                      ? "bg-[#E2FF00] text-[#020617] shadow-[0_10px_30px_rgba(226,255,0,0.15)] hover:scale-[1.02]"
+                      : "bg-white text-[#020617] hover:scale-[1.02]"
             )}
           >
-              {isConfirming ? "Building Session Payload..." : isSessionActive ? "Deploy Capital" : "Authorize Session to Trade"}
+              {isConfirming ? (
+                  <>Building Session Payload...</>
+              ) : isDeploying ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#020617]/20 border-t-[#020617] rounded-full animate-spin" />
+                    Initializing W5...
+                  </>
+              ) : !isAAContractDeployed ? (
+                  <>Initialize Pamelo Infrastructure <Cpu className="w-4 h-4" /></>
+              ) : isSessionActive ? (
+                  <>Deploy Capital <Zap className="w-4 h-4" /></>
+              ) : (
+                  <>Authorize Session to Trade <Clock className="w-4 h-4" /></>
+              )}
           </button>
       </div>
 

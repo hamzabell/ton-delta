@@ -8,9 +8,9 @@ import clsx from "clsx";
 export default function PortfolioPage() {
   const wallet = useTonWallet();
 
-  // Non-Custodial AA State
-  const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
-  const [isDeploying, setIsDeploying] = useState(false);
+  // Non-Custodial AA State (Now managed per-strategy)
+  // const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
+  // const [isDeploying, setIsDeploying] = useState(false);
   
   // Session State
   const [hasActiveSession, setHasActiveSession] = useState(false);
@@ -50,13 +50,13 @@ export default function PortfolioPage() {
     }, 2000);
   };
 
-  const deployAAWallet = () => {
-    setIsDeploying(true);
-    setTimeout(() => {
-        setIsAAContractDeployed(true);
-        setIsDeploying(false);
-    }, 2000);
-  };
+  // const deployAAWallet = () => {
+  //   setIsDeploying(true);
+  //   setTimeout(() => {
+  //       setIsAAContractDeployed(true);
+  //       setIsDeploying(false);
+  //   }, 2000);
+  // };
 
   const authorizeSession = () => {
     setHasActiveSession(true);
@@ -96,29 +96,6 @@ export default function PortfolioPage() {
               <div className="scale-110 origin-center">
                 <TonConnectButton />
               </div>
-          </div>
-      ) : !isAAContractDeployed ? (
-          <div className="bg-[#E2FF00] rounded-3xl p-8 text-[#020617] space-y-6 shadow-[0_20px_50px_rgba(226,255,0,0.1)] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                  <Cpu className="w-24 h-24" />
-              </div>
-              <div className="space-y-2 relative z-10">
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter leading-none">Initialize Pamelo</h2>
-                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 leading-relaxed">
-                      Deploy your institutional-grade W5 Trading Account. Non-custodial, high-performance.
-                  </p>
-              </div>
-              <button 
-                onClick={deployAAWallet}
-                disabled={isDeploying}
-                className="w-full bg-[#020617] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
-              >
-                  {isDeploying ? (
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : (
-                      <>Deploy AA Infrastructure <ArrowUpRight className="w-4 h-4" /></>
-                  )}
-              </button>
           </div>
       ) : (
           <div className="grid grid-cols-1 gap-4">
