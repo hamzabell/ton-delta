@@ -82,9 +82,9 @@ export default function TransparencyPage() {
            
            <div className="space-y-3">
                 {getLedger(selectedPair.type).map((item, i) => (
-                    <div key={i} className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+                    <div key={i} className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 group hover:bg-white/[0.05] transition-all">
                         <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                             </div>
                             <div>
@@ -92,7 +92,9 @@ export default function TransparencyPage() {
                                 <p className="text-sm font-black text-white uppercase italic tracking-tight">{item.action}</p>
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-[#E2FF00] uppercase tracking-widest italic">{item.status}</span>
+                        <div className="flex sm:justify-end border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
+                           <span className="text-[10px] font-black text-[#E2FF00] uppercase tracking-widest italic">{item.status}</span>
+                        </div>
                     </div>
                 ))}
            </div>
