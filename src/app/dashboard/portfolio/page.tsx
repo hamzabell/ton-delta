@@ -172,14 +172,14 @@ export default function PortfolioPage() {
                           </div>
                           <div>
                               <p className="font-black text-base text-white italic tracking-tighter uppercase">{pos.pair}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                  <div className="flex items-center gap-1 text-[#E2FF00] bg-[#E2FF00]/5 px-1.5 py-0.5 rounded border border-[#E2FF00]/10">
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                  <div className="flex items-center gap-1 text-[#E2FF00] bg-[#E2FF00]/10 px-2 py-0.5 rounded-full border border-[#E2FF00]/20 shadow-[0_0_10px_rgba(226,255,0,0.05)]">
                                       <div className="w-1 h-1 rounded-full bg-[#E2FF00] animate-pulse" />
-                                      <span className="text-[7px] font-black uppercase tracking-widest leading-none">W5 Active</span>
+                                      <span className="text-[8px] font-black uppercase tracking-widest leading-none">W5 Active</span>
                                   </div>
                                   <span className={clsx(
-                                      "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
-                                      pos.risk === "Low" ? "text-emerald-500 bg-emerald-500/5" : "text-amber-500 bg-amber-500/5"
+                                      "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                                      pos.risk === "Low" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]" : "text-amber-500 bg-amber-500/10 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)]"
                                   )}>{pos.risk} Risk</span>
                               </div>
                           </div>
