@@ -2,6 +2,35 @@
 
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Zap, Activity, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+
+function CountUp({ end, duration = 2000, suffix = "" }: { end: number, duration?: number, suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(0);
+  const startTime = useRef<number | null>(null);
+
+  useEffect(() => {
+    const animate = (timestamp: number) => {
+      if (!startTime.current) startTime.current = timestamp;
+      const progress = timestamp - startTime.current;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function: outExpo
+      const easedPercentage = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      const nextCount = easedPercentage * end;
+      setCount(nextCount);
+      
+      if (percentage < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [end, duration]);
+
+  return <span>{count.toLocaleString(undefined, { minimumFractionDigits: count % 1 === 0 ? 0 : 1, maximumFractionDigits: 1 })}{suffix}</span>;
+}
 
 export default function LandingPage() {
   return (
@@ -52,21 +81,39 @@ export default function LandingPage() {
          </div>
       </section>
 
-      {/* Simple Stats Row */}
-      <section className="py-20 border-t border-white/5">
-         <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 gap-y-12 gap-x-8 md:gap-x-16">
-             <div className="text-center md:text-left">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-1.5">Avg. Stable Yield</p>
-                <p className="text-4xl md:text-6xl font-bold text-white tracking-tighter italic">24.5%</p>
-             </div>
-             <div className="text-center md:text-left">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-1.5">Meme APR Cap</p>
-                <p className="text-4xl md:text-6xl font-bold text-white tracking-tighter italic">140%+</p>
-             </div>
-             <div className="col-span-2 md:col-span-1 text-center md:text-left">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-1.5">Model</p>
-                <p className="text-4xl md:text-6xl font-bold text-[#E2FF00] tracking-tighter italic">USDT Base</p>
-             </div>
+      {/* Refined Stats Section - Scaled Down */}
+      <section className="py-16 border-t border-white/5 relative overflow-hidden">
+         {/* Decorative background element */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] bg-[#E2FF00]/5 blur-[100px] rounded-full pointer-events-none"></div>
+         
+         <div className="max-w-4xl mx-auto px-6 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+                {[
+                  { label: "Avg. Stable Yield", value: 24.5, suffix: "%", color: "text-white" },
+                  { label: "Meme APR Cap", value: 140, suffix: "%+", color: "text-white" },
+                  { label: "Model", value: "USDT Base", color: "text-[#E2FF00]" }
+                ].map((stat, i) => (
+                  <div 
+                    key={i} 
+                    className="group relative bg-white/[0.02] border border-white/5 p-8 rounded-3xl backdrop-blur-sm hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300"
+                  >
+                    <div className="absolute top-4 right-6 opacity-0 group-hover:opacity-40 transition-opacity">
+                       <Zap className="w-3 h-3 text-[#E2FF00]" />
+                    </div>
+                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em] mb-3">{stat.label}</p>
+                    <p className={`text-4xl lg:text-5xl font-black ${stat.color} tracking-tighter italic leading-none`}>
+                      {typeof stat.value === 'number' ? (
+                        <CountUp end={stat.value} suffix={stat.suffix} />
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
+                    
+                    {/* Subtle Hover Glow */}
+                    <div className="absolute inset-0 rounded-3xl bg-[#E2FF00]/3 opacity-0 group-hover:opacity-100 blur-xl transition-opacity pointer-events-none"></div>
+                  </div>
+                ))}
+            </div>
          </div>
       </section>
 
