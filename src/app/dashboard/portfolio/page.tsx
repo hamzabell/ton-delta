@@ -111,47 +111,47 @@ export default function PortfolioPage() {
               </div>
           </div>
       ) : (
-          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-8 group transition-all hover:bg-white/[0.04]">
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl overflow-hidden flex flex-col group transition-all hover:bg-white/[0.04]">
               {/* Identity & Budget Section */}
-              <div className="flex items-start sm:items-center gap-5 flex-1">
-                  <div className="w-12 h-12 shrink-0 rounded-2xl bg-[#E2FF00]/10 flex items-center justify-center border border-[#E2FF00]/20 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
-                      <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-4">
-                      {/* Secure Info */}
-                      <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                              <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Secure Account</p>
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+              <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+                  <div className="flex items-start sm:items-center gap-5 flex-1">
+                      <div className="w-12 h-12 shrink-0 rounded-2xl bg-[#E2FF00]/10 flex items-center justify-center border border-[#E2FF00]/20 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
+                          <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-4">
+                          {/* Secure Info */}
+                          <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                  <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Secure Account</p>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+                              </div>
+                              <h3 className="text-base font-black text-white font-mono uppercase tracking-tighter italic leading-none">EQ...3F8A</h3>
                           </div>
-                          <h3 className="text-base font-black text-white font-mono uppercase tracking-tighter italic leading-none">EQ...3F8A</h3>
-                      </div>
 
-                      {/* Vertical Budget Section */}
-                      <div className="space-y-1.5">
-                          <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em]">Daily Budget</p>
-                          <button 
-                            onClick={() => { setTempLimit(dailyLimit.toString()); setShowSettings(true); }}
-                            className="flex items-center gap-2.5 group/btn hover:text-[#E2FF00] transition-colors"
-                          >
-                              <span className="text-xl font-black text-[#E2FF00] italic uppercase tracking-tighter leading-none">${formatCompactNumber(dailyLimit)} <span className="text-[10px] opacity-40 not-italic ml-0.5 font-bold uppercase tracking-widest">USDT</span></span>
-                              <Settings className="w-4 h-4 text-white/20 group-hover/btn:text-[#E2FF00] transition-all group-hover/btn:rotate-90" />
-                          </button>
+                          {/* Vertical Budget Section */}
+                          <div className="space-y-1.5">
+                              <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em]">Daily Budget</p>
+                              <button 
+                                onClick={() => { setTempLimit(dailyLimit.toString()); setShowSettings(true); }}
+                                className="flex items-center gap-2.5 group/btn hover:text-[#E2FF00] transition-colors"
+                              >
+                                  <span className="text-xl font-black text-[#E2FF00] italic uppercase tracking-tighter leading-none">${formatCompactNumber(dailyLimit)} <span className="text-[10px] opacity-40 not-italic ml-0.5 font-bold uppercase tracking-widest">USDT</span></span>
+                                  <Settings className="w-4 h-4 text-white/20 group-hover/btn:text-[#E2FF00] transition-all group-hover/btn:rotate-90" />
+                              </button>
+                          </div>
                       </div>
                   </div>
               </div>
 
-              {/* Action Section */}
-              <div className="flex items-center sm:justify-end gap-6 pt-6 sm:pt-0 border-t sm:border-t-0 sm:border-l border-white/5 sm:pl-8">
-                  <button 
-                    onClick={handleDisconnect}
-                    className="flex items-center gap-2 px-6 py-3 sm:px-4 sm:py-2.5 rounded-2xl bg-white/5 sm:bg-transparent border border-white/5 sm:border-none text-white/30 hover:text-red-400 hover:bg-red-400/5 transition-all active:scale-95 group/logout"
-                    title="Sign Out"
-                  >
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Sign Out</span>
-                      <LogOut className="w-5 h-5 group-hover/logout:translate-x-0.5 transition-transform" />
-                  </button>
-              </div>
+              {/* Action Section: Full-width Button */}
+              <button 
+                onClick={handleDisconnect}
+                className="w-full flex items-center justify-center gap-3 py-4 bg-white/5 border-t border-white/5 text-white/30 hover:text-red-400 hover:bg-red-400/5 transition-all active:scale-95 group/logout"
+                title="Sign Out"
+              >
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Sign Out</span>
+                  <LogOut className="w-5 h-5 group-hover/logout:translate-x-0.5 transition-transform" />
+              </button>
           </div>
       )}
 
