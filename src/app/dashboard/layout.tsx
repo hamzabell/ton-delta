@@ -33,8 +33,8 @@ export default function DashboardLayout({
           {/* Top Bar - Ultra Clean */}
           <header className="fixed top-0 w-full max-w-md z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-[#E2FF00] text-[#020617] flex items-center justify-center font-black text-xs">Δ</div>
-                <span className="font-bold tracking-tight text-base">Ton Delta</span>
+                <span className="text-xl">🍈</span>
+                <span className="font-bold tracking-tight text-base">Pamelo.finance</span>
             </div>
             <div className="scale-90 origin-right">
               <TonConnectButton />

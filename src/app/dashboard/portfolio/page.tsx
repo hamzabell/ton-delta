@@ -1,105 +1,331 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowUpRight, ShieldCheck, Wallet, ArrowDownLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowUpRight, ShieldCheck, Wallet, ArrowDownLeft, X, Check, Lock, Cpu, Clock } from "lucide-react";
 import { useTonWallet, TonConnectButton } from "@tonconnect/ui-react";
+import clsx from "clsx";
 
 export default function PortfolioPage() {
   const wallet = useTonWallet();
 
-  // V1 Institutional Mock Data
-  const institutionalBalance = 15420.50;
+  // Non-Custodial AA State
+  const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  
+  // Session State
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionDuration, setSessionDuration] = useState("7d");
+  const [maxLoss, setMaxLoss] = useState("100"); // Default 100 USDT
+
+  // Positions State (Mock data)
+  const [positions, setPositions] = useState([
+    { id: 1, pair: "USDT / TON", icon: "T", value: 9420.50, grossProfit: 420.50, status: "Stable", risk: "Low" },
+    { id: 2, pair: "USDT / DOGS", icon: "D", value: 5000.00, grossProfit: 1280.20, status: "Meme", risk: "High" }
+  ]);
+
+  const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Profit Sharing Calculations (20% Cut)
+  const totalGrossProfit = positions.reduce((acc, pos) => acc + pos.grossProfit, 0);
+  const performanceFee = totalGrossProfit * 0.20;
+  
+  const institutionalEquity = positions.reduce((acc, pos) => acc + pos.value, 0);
+  const netEquity = institutionalEquity - performanceFee;
+  
   const walletBalance = 1250.00;
-  const totalEquity = institutionalBalance + (wallet ? walletBalance : 0);
+  const totalNetBalance = netEquity + (wallet ? walletBalance : 0);
+
+  const handleRedeem = (id: number) => {
+    setRedeemingId(id);
+  };
+
+  const confirmRedeem = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setPositions(prev => prev.filter(pos => pos.id !== redeemingId));
+      setIsProcessing(false);
+      setRedeemingId(null);
+    }, 2000);
+  };
+
+  const deployAAWallet = () => {
+    setIsDeploying(true);
+    setTimeout(() => {
+        setIsAAContractDeployed(true);
+        setIsDeploying(false);
+    }, 2000);
+  };
+
+  const authorizeSession = () => {
+    setHasActiveSession(true);
+    setShowSessionModal(false);
+  };
 
   return (
     <div className="space-y-8 pb-24">
-      {/* Small Equity Header */}
+      
+      {/* 1. Header: Total Net Balance */}
       <div className="space-y-1">
-           <p className="text-white/20 text-[10px] font-bold uppercase tracking-wider">Total Balance</p>
-           <h1 className="text-3xl font-bold text-white tracking-tight">
-              ${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+           <p className="text-white/20 text-[10px] font-bold uppercase tracking-[0.2em]">Net Managed Assets</p>
+           <h1 className="text-4xl font-black text-white italic tracking-tighter">
+              ${totalNetBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
            </h1>
-           <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-wider">+$642.12 (4.3%) • Last 24h</p>
+           <div className="flex items-center gap-2 mt-1">
+               <span className="text-[10px] text-[#E2FF00] font-black uppercase tracking-widest italic">
+                   +${totalGrossProfit.toLocaleString()} Yield Harvested
+               </span>
+               <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">•</span>
+               <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
+                   20% Settle Logic
+               </span>
+           </div>
       </div>
 
-      {/* Buttons - Simplified */}
-      <div className="grid grid-cols-2 gap-4">
-          <button className="bg-[#E2FF00] text-[#020617] p-4 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all">
-              <ArrowDownLeft className="w-4 h-4" />
-              Deposit
-          </button>
-          <button className="bg-white/5 text-white p-4 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-white/5 active:scale-95 transition-all">
-              <ArrowUpRight className="w-4 h-4" />
-              Withdraw
-          </button>
-      </div>
+      {/* 2. Unified Onboarding / Deployment Flow */}
+      {!wallet ? (
+          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+                  <Wallet className="w-8 h-8 text-white/10" />
+              </div>
+              <div className="space-y-2">
+                  <h2 className="text-sm font-black text-white uppercase italic tracking-tighter">Connection Required</h2>
+                  <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-bold max-w-[200px] mx-auto">Access your secure W5 Pamelo Account infrastructure</p>
+              </div>
+              <div className="scale-110 origin-center">
+                <TonConnectButton />
+              </div>
+          </div>
+      ) : !isAAContractDeployed ? (
+          <div className="bg-[#E2FF00] rounded-3xl p-8 text-[#020617] space-y-6 shadow-[0_20px_50px_rgba(226,255,0,0.1)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                  <Cpu className="w-24 h-24" />
+              </div>
+              <div className="space-y-2 relative z-10">
+                  <h2 className="text-xl font-black uppercase italic tracking-tighter leading-none">Initialize Pamelo</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 leading-relaxed">
+                      Deploy your institutional-grade W5 Trading Account. Non-custodial, high-performance.
+                  </p>
+              </div>
+              <button 
+                onClick={deployAAWallet}
+                disabled={isDeploying}
+                className="w-full bg-[#020617] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
+              >
+                  {isDeploying ? (
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                      <>Deploy AA Infrastructure <ArrowUpRight className="w-4 h-4" /></>
+                  )}
+              </button>
+          </div>
+      ) : (
+          <div className="grid grid-cols-1 gap-4">
+              <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                          <ShieldCheck className="w-6 h-6 text-emerald-500" />
+                      </div>
+                      <div>
+                          <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Vault Address</p>
+                          <h3 className="text-sm font-bold text-white font-mono">EQ...3f8a</h3>
+                      </div>
+                  </div>
+                  {!hasActiveSession ? (
+                      <button 
+                        onClick={() => setShowSessionModal(true)}
+                        className="bg-[#E2FF00] text-[#020617] px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+                      >
+                         Delegate
+                      </button>
+                  ) : (
+                      <div className="flex flex-col items-end gap-1.5">
+                          <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span className="text-[9px] font-black uppercase tracking-widest leading-none">Session Authorized ({sessionDuration})</span>
+                          </div>
+                          <button onClick={() => setShowSessionModal(true)} className="text-[8px] font-bold text-white/20 uppercase underline decoration-white/10 hover:text-white transition-colors">Adjust Guardrails</button>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
 
-      {/* Balances */}
-      <div className="space-y-3">
-            <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-widest px-1">Managed Assets</h2>
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <ShieldCheck className="w-5 h-5 text-[#E2FF00]" />
-                    <div>
-                        <p className="text-xs font-bold text-white">V1 Vaults</p>
-                        <p className="text-[10px] text-white/30 truncate">Institutional Hedge Position</p>
-                    </div>
-                </div>
-                <p className="text-sm font-bold text-white">${institutionalBalance.toLocaleString()}</p>
-            </div>
-
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Wallet className="w-5 h-5 text-white/40" />
-                    <div>
-                        <p className="text-xs font-bold text-white">TON Wallet</p>
-                        <p className="text-[10px] text-white/30 truncate">Liquid Assets</p>
-                    </div>
-                </div>
-                {wallet ? (
-                    <p className="text-sm font-bold text-white/60">${walletBalance.toLocaleString()}</p>
-                ) : (
-                    <div className="scale-75 origin-right">
-                        <TonConnectButton />
-                    </div>
-                )}
-            </div>
-      </div>
-
-      {/* Active Positions Table - Cleanized */}
+      {/* 4. Active Positions */}
       <div className="space-y-4">
-          <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-widest px-1">Active Positions</h2>
+          <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">Strategy Positions</h2>
           
-          <div className="space-y-2">
-              {[
-                { pair: "TON / USDT", icon: "T", value: "$9,420.50", yield: "+$420.50", status: "Neutral" },
-                { pair: "TON / BTC", icon: "B", value: "$5,000.00", yield: "+$180.20", status: "Neutral" }
-              ].map((pos) => (
-                <div key={pos.pair} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-bold text-white/50 border border-white/10">
-                            {pos.icon}
-                        </div>
-                        <div>
-                            <p className="font-bold text-sm text-white">{pos.pair}</p>
-                            <p className="text-[10px] text-white/20 font-medium">{pos.status} • swap.coffee</p>
-                        </div>
-                    </div>
+          <div className="space-y-3">
+              {positions.length > 0 ? (
+                positions.map((pos) => (
+                  <div key={pos.id} className="p-5 bg-white/[0.03] border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+                      <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/40 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
+                              {pos.icon}
+                          </div>
+                          <div>
+                              <p className="font-black text-base text-white italic tracking-tighter uppercase">{pos.pair}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                  <span className={clsx(
+                                      "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
+                                      pos.risk === "Low" ? "text-emerald-500 bg-emerald-500/5" : "text-amber-500 bg-amber-500/5"
+                                  )}>{pos.risk} Risk</span>
+                                  <span className="text-[8px] text-white/20 font-bold uppercase tracking-widest">{pos.status}</span>
+                              </div>
+                          </div>
+                      </div>
 
-                    <div className="flex items-center gap-6">
-                        <div className="text-right">
-                            <p className="font-bold text-sm text-white">{pos.value}</p>
-                            <p className="text-[9px] text-[#E2FF00] font-bold uppercase tracking-wider">{pos.yield}</p>
-                        </div>
-                        <button className="text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors">
-                            Redeem
-                        </button>
-                    </div>
+                      <div className="flex items-center gap-6">
+                          <div className="text-right">
+                              <p className="font-black text-base text-white italic tracking-tighter">${pos.value.toLocaleString()}</p>
+                              <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-wider">+${pos.grossProfit.toLocaleString()} Yield</p>
+                          </div>
+                      </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-12 text-center border border-dashed border-white/5 rounded-3xl">
+                    <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.4em] italic leading-relaxed">No active delegations.<br/>Select a USDT pair to harvest yield.</p>
                 </div>
-              ))}
+              )}
           </div>
       </div>
+
+      {/* 3. Balances Summary */}
+      <div className="space-y-3">
+            <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">Capital Ledger</h2>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-5">
+                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Pamelo Equity</p>
+                    <p className="text-lg font-black text-white font-mono italic leading-none">${netEquity.toLocaleString()}</p>
+                </div>
+                <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-5">
+                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Liquid Wallet</p>
+                    <p className="text-lg font-black text-white/20 font-mono italic leading-none">${walletBalance.toLocaleString()}</p>
+                </div>
+            </div>
+      </div>
+
+      {/* MODALS */}
+
+      {/* Session Authorization Modal */}
+      {showSessionModal && (
+          <div className="fixed inset-0 z-[110] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                  <div className="flex justify-between items-start mb-6">
+                      <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Budgeted Delegation</h3>
+                          <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest">Configure Safeguards</p>
+                      </div>
+                      <button onClick={() => setShowSessionModal(false)} className="p-2 hover:bg-white/5 rounded-full"><X className="w-5 h-5 text-white/40" /></button>
+                  </div>
+
+                  <div className="space-y-6 mb-10">
+                      {/* Session Length Selection */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Delegation Period</label>
+                        <div className="grid grid-cols-5 gap-1.5">
+                             {['1h', '24h', '7d', '30d', '1y'].map((d) => (
+                                 <button 
+                                   key={d}
+                                   onClick={() => setSessionDuration(d)}
+                                   className={clsx(
+                                       "py-3 rounded-xl border font-bold text-[8px] uppercase tracking-widest transition-all",
+                                       sessionDuration === d 
+                                         ? "bg-[#E2FF00] text-[#020617] border-[#E2FF00]" 
+                                         : "bg-white/5 text-white/40 border-white/5 hover:border-white/10"
+                                   )}
+                                 >
+                                     {d}
+                                 </button>
+                             ))}
+                        </div>
+                      </div>
+
+                      {/* Max Loss Selection */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Loss Threshold (USDT)</label>
+                        <div className="relative">
+                            <input 
+                                type="number"
+                                value={maxLoss}
+                                onChange={(e) => setMaxLoss(e.target.value)}
+                                className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-5 text-white font-black italic focus:outline-none focus:border-[#E2FF00]/50 transition-all font-mono"
+                                placeholder="Enter limit..."
+                            />
+                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-[#E2FF00] uppercase italic">
+                                USDT CAP
+                            </div>
+                        </div>
+                        <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest px-1">Secure session terminates if USDT losses hit this ceiling.</p>
+                      </div>
+                      
+                      <div className="flex gap-3 items-start p-3 bg-white/5 rounded-2xl">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <p className="text-[9px] text-white/40 leading-relaxed font-bold uppercase tracking-wider">
+                              W5 Session Key restricted to USDT pairs only. No global withdrawal rights.
+                          </p>
+                      </div>
+                  </div>
+
+                  <button 
+                    onClick={authorizeSession}
+                    className="w-full bg-white text-[#020617] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl"
+                  >
+                      Authorize Delegation
+                  </button>
+              </div>
+          </div>
+      )}
+
+      {/* Redemption Confirmation Overlay */}
+      {redeemingId && (
+          <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+              <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                  <div className="flex justify-between items-start mb-6">
+                      <div>
+                          <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Withdraw & Settle</h3>
+                          <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Atomic Profit Sharing</p>
+                      </div>
+                      <button onClick={() => setRedeemingId(null)} className="p-2 hover:bg-white/5 rounded-full"><X className="w-5 h-5 text-white/40" /></button>
+                  </div>
+
+                  <div className="p-5 bg-white/5 rounded-2xl space-y-4 mb-8">
+                     <div className="flex justify-between items-center">
+                         <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Gross Profit</span>
+                         <span className="text-sm font-bold text-white font-mono">${positions.find(p => p.id === redeemingId)?.grossProfit.toLocaleString()}</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                         <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Protocol Fee (20%)</span>
+                         <span className="text-sm font-bold text-[#E2FF00] italic font-mono">-${((positions.find(p => p.id === redeemingId)?.grossProfit || 0) * 0.2).toLocaleString()}</span>
+                     </div>
+                     <div className="h-px bg-white/5" />
+                     <div className="flex justify-between items-center text-emerald-400">
+                         <span className="text-[10px] font-bold uppercase tracking-widest">Net Redemption Value</span>
+                         <span className="text-lg font-black font-mono">${((positions.find(p => p.id === redeemingId)?.value || 0) - (positions.find(p => p.id === redeemingId)?.grossProfit || 0) * 0.2).toLocaleString()}</span>
+                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                      <button 
+                        onClick={confirmRedeem}
+                        disabled={isProcessing}
+                        className={clsx(
+                            "w-full py-5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                            isProcessing ? "bg-white/5 text-white/20 cursor-not-allowed" : "bg-white text-[#020617] hover:bg-white/90"
+                        )}
+                      >
+                          {isProcessing ? (
+                              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          ) : (
+                              <>Atomic Settle & Close</>
+                          )}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 }

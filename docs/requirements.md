@@ -1,93 +1,93 @@
-Here is the comprehensive **Product Requirements Document (PRD)** for the full **Neutron** application.
+# **Product Requirements Document: Pamelo.finance (V1.3)**
 
-This document expands beyond the Landing Page into the core application logic, backend services, and social modules required for the MVP.
-
----
-
-# **Product Requirements Document: Ton Delta App (MVP)**
-
-**Version:** 1.1
+**Version:** 1.3
 **Platform:** Telegram Mini App (TMA)
-**Stack:** Next.js 14, Base UI (Headless), Tailwind CSS, Prisma, PostgreSQL, Redis, STON.fi SDK.
-**Core Objective:** Democratize delta-neutral carry trading via a trusted, transparent, and social interface.
+**Stack:** Next.js 16 (Turbopack), Tailwind CSS, Prisma, PostgreSQL, Redis, swap.coffee SDK, Storm Trade SDK.
+**Core Objective:** Delegated high-yield asset management on USDT-based TON native pairs and meme coins via Non-Custodial AA.
 
 ---
 
-## **1. Application Architecture**
+## **1. Core Value Proposition**
 
-The app is built as a **Hybrid-DeFi** system.
+Pamelo.finance provides a professional, sleek DeFi experience for automated yield generation. By focusing on **USDT pairs**, the platform reduces "double volatility" and simplifies risk calculations for the user.
 
-- **User Interface:** Lives entirely inside Telegram (Mini App).
-- **Custody:** Hybrid.
-- _Spot Assets:_ Non-custodial (Smart Contract interacting with STON.fi).
-- _Hedge Assets:_ Custodial (API-managed Sub-accounts on Binance/Bybit).
-
-- **Trust Layer:** "Proof of Reserves" Dashboard (Real-time verification).
-
-### **Module Breakdown**
-
-1. **Auth & Wallet Module:** Handles Telegram Login + TON Wallet Connection. [IMPLEMENTED]
-2. **Opportunities Module:** Live funding rates across TON ecosystem pairs. [IMPLEMENTED]
-3. **Portfolio Module:** Real-time PnL tracking and position management. [IMPLEMENTED]
-4. **Transparency Module:** Real-time verification of delta-neutral yields and Proof of Reserves. [IMPLEMENTED]
-5. **Vault Module:** (In Progress) The core investing engine (Deposit/Withdraw/Swap).
-6. **Social Module:** (Planned) Leaderboards, Strategy Creation, and Referral loops.
-7. **Admin Module:** (In Progress) Risk management and emergency stops.
+- **Focus:** TON Ecosystem Native Pairs (e.g., USDT/TON, USDT/DOGS, USDT/NOT, USDT/REDO).
+- **Control:** Users predefine Max Loss and Delegation Duration.
+- **Monetization:** 20% Performance Fee (Platform only profits when the user does).
 
 ---
 
-## **2. Detailed Feature Modules & User Stories**
+## **2. Application Architecture**
 
-### **Module A: Auth & Onboarding (The "Zero Friction" Flow)**
+The app is built as a **Non-Custodial AA** system using **TON W5**.
 
-**Goal:** Convert a Telegram user into a Ton Delta user in < 10 seconds.
-
-- **Status:** IMPLEMENTED
-- **Tech:** `@telegram-apps/sdk`, `@tonconnect/ui-react`.
-
-### **Module B: Opportunities (Market Intel)**
-
-**Goal:** Provide real-time data on the best funding rate opportunities.
-
-- **Status:** IMPLEMENTED
-- **UI:** `/dashboard` showing live pairs (TON/USDT, TON/BTC, etc.) with annualized yields.
-
-### **Module C: Portfolio & Transparency**
-
-**Goal:** Prove the "House Edge" narrative and show personal PnL.
-
-- **Status:** IMPLEMENTED
-- **Features:**
-  - Live PnL tracking in `/dashboard/portfolio`.
-  - Historical Basis Yield charts in `/dashboard/transparency`.
-  - Real-time APR display.
-
-### **Module D: The Vault (Investment Engine)**
-
-**Goal:** Abstract complex arbitrage into "One Click."
-
-- **Status:** IN PROGRESS
-- **UI Components:** Base UI `<Tabs>` (Invest / Withdraw), Base UI `<Slider>` (Amount).
-- **Tech:** STON.fi SDK (Spot Buy), CCXT (Hedge Short).
+- **User Wallet:** TON W5 (Account Abstraction) Wallet.
+- **Custody:** Non-Custodial. Assets stay in the user's W5 wallet.
+- **Execution:** Delegated to Pamelo Backend via restricted Session Keys.
+- **Execution Engine:** Atomic swaps/positions via swap.coffee (Spot) and Storm Trade (Futures).
 
 ---
 
-## **6. Development Phase Plan**
+## **3. Detailed Feature Modules**
 
-**Phase 1: The "Smoke" (Completed)**
+### **Module A: Onboarding & AA Deployment**
 
-- Build the **Landing Page**.
-- Implement **Telegram Auth**.
-- Database: Save Users.
+- User connects personal wallet.
+- User deploys a personal W5 "Pamelo Account".
+- User funds the account with USDT/TON.
 
-**Phase 2: The "Core" (Current Priority)**
+### **Module B: Strategy & Session Authorization**
 
-- **UI Implementation:** Dashboard, Portfolio, and Transparency pages finished.
-- **Backend Infrastructure:** Workers for Funding, Risk, and Deposits in place.
-- **Next Step:** Finalize the "One-Click" execution for Vault deposits.
+- **Trigger:** Initiated upon first investment.
+- **Parameters:**
+  - **Strategy Type:** Stable (Low-Risk) vs. Meme (High-Reward).
+  - **Loss Safeguard:** User-defined threshold (e.g., 50 USDT).
+  - **Duration:** Session length (1h, 24h, 7d, 30d, 1y).
 
-**Phase 3: The "MVP" (Upcoming)**
+### **Module C: Automated Basis Execution**
 
-- Deploy Smart Contract (Tact).
-- Enable Real Deposits.
-- Public launch for Founding Members.
+- Backend manages delta-neutral or carry positions autonomously.
+- Smart contract guardrails prevent unauthorized withdrawals or loss-threshold violations.
+
+### **Module D: Trust-Based Profit Sharing**
+
+- **Mechanism:** 20% Withdrawal Fee on net profits.
+- Atomic settlement: 80% profit + Principal -> User; 20% profit -> Platform.
+
+---
+
+## **4. User Interface & Screen Functionalities**
+
+### **A. Yields (The "Spectrum of Choice")**
+
+- **Toggle:** "Stable" (USDT/TON) vs. "Meme" (USDT/DOGS, USDT/NOT, USDT/REDO).
+- **Pairs:** Exclusively USDT-denominated for clear tracking.
+- **AA Status:** Persistent visual indicator of account health and session status.
+
+### **B. Portfolio**
+
+- **Balance:** Total Net Equity (USD) + Gross Yield tracking.
+- **Account Control:** Manage W5 deployment and Session guardrails.
+- **Positions:** Live view of active delegated strategies with "Redeem" (Exit) functionality.
+
+### **C. Audit (System Health)**
+
+- **Solvency:** Real-time proof of delta-neutrality/insurance.
+- **Transparency:** Open ledger of performance fee distributions.
+
+---
+
+## **5. Technical Phase Plan**
+
+**Phase 1: Rebranding & USDT Transition (Current)**
+
+- Update name, icon (🍈), and metadata.
+- Refactor dashboard to USDT-centric pairs and "Spectrum Toggle".
+
+**Phase 2: Advanced Guardrails**
+
+- Implement dynamic Max Loss validation based on USDT equity.
+
+**Phase 3: Performance Settlement**
+
+- Deploy the atomic profit-sharing smart contract logic.
