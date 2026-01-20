@@ -12,11 +12,7 @@ export default function PortfolioPage() {
   // const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
   // const [isDeploying, setIsDeploying] = useState(false);
   
-  // Session State
-  const [hasActiveSession, setHasActiveSession] = useState(false);
-  const [showSessionModal, setShowSessionModal] = useState(false);
-  const [sessionDuration, setSessionDuration] = useState("7d");
-  const [maxLoss, setMaxLoss] = useState("100"); // Default 100 USDT
+  // Positions State (Mock data)
 
   // Positions State (Mock data)
   const [positions, setPositions] = useState([
@@ -58,10 +54,6 @@ export default function PortfolioPage() {
   //   }, 2000);
   // };
 
-  const authorizeSession = () => {
-    setHasActiveSession(true);
-    setShowSessionModal(false);
-  };
 
   return (
     <div className="space-y-8 pb-24">
@@ -98,33 +90,19 @@ export default function PortfolioPage() {
               </div>
           </div>
       ) : (
-          <div className="grid grid-cols-1 gap-4">
-              <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                          <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                      </div>
-                      <div>
-                          <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Vault Address</p>
-                          <h3 className="text-sm font-bold text-white font-mono">EQ...3f8a</h3>
-                      </div>
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#E2FF00]/10 flex items-center justify-center">
+                      <ShieldCheck className="w-6 h-6 text-[#E2FF00]" />
                   </div>
-                  {!hasActiveSession ? (
-                      <button 
-                        onClick={() => setShowSessionModal(true)}
-                        className="bg-[#E2FF00] text-[#020617] px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg"
-                      >
-                         Delegate
-                      </button>
-                  ) : (
-                      <div className="flex flex-col items-end gap-1.5">
-                          <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              <span className="text-[9px] font-black uppercase tracking-widest leading-none">Session Authorized ({sessionDuration})</span>
-                          </div>
-                          <button onClick={() => setShowSessionModal(true)} className="text-[8px] font-bold text-white/20 uppercase underline decoration-white/10 hover:text-white transition-colors">Adjust Guardrails</button>
-                      </div>
-                  )}
+                  <div>
+                      <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-0.5">Primary W5 Account</p>
+                      <h3 className="text-sm font-bold text-white font-mono uppercase tracking-tighter">EQ...3f8a Status: Active</h3>
+                  </div>
+              </div>
+              <div className="text-right">
+                  <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mb-0.5">Daily Limit</p>
+                  <p className="text-sm font-bold text-white italic tracking-tighter">$1,000 USDT</p>
               </div>
           </div>
       )}
@@ -136,7 +114,10 @@ export default function PortfolioPage() {
           <div className="space-y-3">
               {positions.length > 0 ? (
                 positions.map((pos) => (
-                  <div key={pos.id} className="p-5 bg-white/[0.03] border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+                  <div key={pos.id} className="p-5 bg-white/[0.03] border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/[0.05] transition-all relative overflow-hidden">
+                      {/* Active Status Glow */}
+                      <div className="absolute top-0 left-0 w-1 h-full bg-[#E2FF00]/40" />
+                      
                       <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/40 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
                               {pos.icon}
@@ -144,11 +125,14 @@ export default function PortfolioPage() {
                           <div>
                               <p className="font-black text-base text-white italic tracking-tighter uppercase">{pos.pair}</p>
                               <div className="flex items-center gap-2 mt-0.5">
+                                  <div className="flex items-center gap-1 text-[#E2FF00] bg-[#E2FF00]/5 px-1.5 py-0.5 rounded border border-[#E2FF00]/10">
+                                      <div className="w-1 h-1 rounded-full bg-[#E2FF00] animate-pulse" />
+                                      <span className="text-[7px] font-black uppercase tracking-widest leading-none">W5 Active</span>
+                                  </div>
                                   <span className={clsx(
                                       "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
                                       pos.risk === "Low" ? "text-emerald-500 bg-emerald-500/5" : "text-amber-500 bg-amber-500/5"
                                   )}>{pos.risk} Risk</span>
-                                  <span className="text-[8px] text-white/20 font-bold uppercase tracking-widest">{pos.status}</span>
                               </div>
                           </div>
                       </div>
@@ -186,75 +170,6 @@ export default function PortfolioPage() {
 
       {/* MODALS */}
 
-      {/* Session Authorization Modal */}
-      {showSessionModal && (
-          <div className="fixed inset-0 z-[110] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-                  <div className="flex justify-between items-start mb-6">
-                      <div className="space-y-1">
-                          <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Budgeted Delegation</h3>
-                          <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest">Configure Safeguards</p>
-                      </div>
-                      <button onClick={() => setShowSessionModal(false)} className="p-2 hover:bg-white/5 rounded-full"><X className="w-5 h-5 text-white/40" /></button>
-                  </div>
-
-                  <div className="space-y-6 mb-10">
-                      {/* Session Length Selection */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Delegation Period</label>
-                        <div className="grid grid-cols-5 gap-1.5">
-                             {['1h', '24h', '7d', '30d', '1y'].map((d) => (
-                                 <button 
-                                   key={d}
-                                   onClick={() => setSessionDuration(d)}
-                                   className={clsx(
-                                       "py-3 rounded-xl border font-bold text-[8px] uppercase tracking-widest transition-all",
-                                       sessionDuration === d 
-                                         ? "bg-[#E2FF00] text-[#020617] border-[#E2FF00]" 
-                                         : "bg-white/5 text-white/40 border-white/5 hover:border-white/10"
-                                   )}
-                                 >
-                                     {d}
-                                 </button>
-                             ))}
-                        </div>
-                      </div>
-
-                      {/* Max Loss Selection */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Loss Threshold (USDT)</label>
-                        <div className="relative">
-                            <input 
-                                type="number"
-                                value={maxLoss}
-                                onChange={(e) => setMaxLoss(e.target.value)}
-                                className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-5 text-white font-black italic focus:outline-none focus:border-[#E2FF00]/50 transition-all font-mono"
-                                placeholder="Enter limit..."
-                            />
-                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-[#E2FF00] uppercase italic">
-                                USDT CAP
-                            </div>
-                        </div>
-                        <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest px-1">Secure session terminates if USDT losses hit this ceiling.</p>
-                      </div>
-                      
-                      <div className="flex gap-3 items-start p-3 bg-white/5 rounded-2xl">
-                          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                          <p className="text-[9px] text-white/40 leading-relaxed font-bold uppercase tracking-wider">
-                              W5 Session Key restricted to USDT pairs only. No global withdrawal rights.
-                          </p>
-                      </div>
-                  </div>
-
-                  <button 
-                    onClick={authorizeSession}
-                    className="w-full bg-white text-[#020617] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl"
-                  >
-                      Authorize Delegation
-                  </button>
-              </div>
-          </div>
-      )}
 
       {/* Redemption Confirmation Overlay */}
       {redeemingId && (
