@@ -52,3 +52,18 @@ export const triggerRebalance$ = (vaultAddress: string, strategyId: string): Obs
     })
   );
 };
+
+/**
+ * Vault object for async/await usage in API routes
+ */
+export const vault = {
+  triggerRebalance: async (vaultAddress: string, strategyId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      triggerRebalance$(vaultAddress, strategyId).subscribe({
+        next: () => {},
+        error: (err) => reject(err),
+        complete: () => resolve()
+      });
+    });
+  }
+};

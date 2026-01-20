@@ -10,15 +10,20 @@ const config = new Configuration({
 const routingApi = new RoutingApi(config);
 const tonClient = new TonClient({ endpoint: 'https://toncenter.com/api/v2/jsonRPC' });
 
+const toTokenAddress = (address: string) => ({
+  blockchain: 'ton',
+  address: address === 'TON' || address === 'ton' ? 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c' : address
+});
+
 /**
  * Fetches the current spot price for a given pair as an Observable
  */
 export const getSpotPrice$ = (fromAddress: string, toAddress: string, intervalMs: number = 60000): Observable<number> => {
   return timer(0, intervalMs).pipe(
     switchMap(() => from(routingApi.buildRoute({
-      fromAddress,
-      toAddress,
-      amount: '1000000000',
+      input_token: toTokenAddress(fromAddress),
+      output_token: toTokenAddress(toAddress),
+      input_amount: 1,
     }))),
     map(route => {
       if (!route.data.paths || route.data.paths.length === 0) {
@@ -50,9 +55,9 @@ export const buildSwapTransaction$ = (params: {
   slippage?: number 
 }): Observable<any[]> => {
   return from(routingApi.buildRoute({
-    fromAddress: params.fromAddress,
-    toAddress: params.toAddress,
-    amount: params.amount,
+    input_token: toTokenAddress(params.fromAddress),
+    output_token: toTokenAddress(params.toAddress),
+    input_amount: Number(BigInt(params.amount)) / 1000000000,
   })).pipe(
     switchMap(route => from(routingApi.buildTransactionsV2({
       sender_address: params.senderAddress,

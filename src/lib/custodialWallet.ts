@@ -30,8 +30,8 @@ export const getKeeperWallet$ = (): Observable<{ contract: any, key: any }> => {
 export const sendTransactions$ = (transactions: { address: string, value: string, cell: string }[]): Observable<{ seqno: number, address: string }> => {
   return getKeeperWallet$().pipe(
     switchMap(({ contract, key }) => {
-      return from(contract.getSeqno()).pipe(
-        switchMap((seqno: number) => {
+      return (from(contract.getSeqno()) as Observable<number>).pipe(
+        switchMap((seqno) => {
           console.log(`[Custodial] Sending ${transactions.length} transactions from ${contract.address.toString()}`);
           
           const transferPromise = contract.sendTransfer({
