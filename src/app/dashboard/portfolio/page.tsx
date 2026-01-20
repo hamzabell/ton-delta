@@ -111,15 +111,15 @@ export default function PortfolioPage() {
               </div>
           </div>
       ) : (
-          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group transition-all hover:bg-white/[0.04]">
-              {/* Identity Section */}
-              <div className="flex items-center gap-5">
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-8 group transition-all hover:bg-white/[0.04]">
+              {/* Identity & Budget Section */}
+              <div className="flex items-start sm:items-center gap-5 flex-1">
                   <div className="w-12 h-12 shrink-0 rounded-2xl bg-[#E2FF00]/10 flex items-center justify-center border border-[#E2FF00]/20 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
                       <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div className="space-y-4">
                       {/* Secure Info */}
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                           <div className="flex items-center gap-2">
                               <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Secure Account</p>
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
@@ -142,13 +142,14 @@ export default function PortfolioPage() {
               </div>
 
               {/* Action Section */}
-              <div className="flex items-center sm:justify-end gap-6 pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l border-white/5 sm:pl-8">
+              <div className="flex items-center sm:justify-end gap-6 pt-6 sm:pt-0 border-t sm:border-t-0 sm:border-l border-white/5 sm:pl-8">
                   <button 
                     onClick={handleDisconnect}
-                    className="p-3 text-white/20 hover:text-red-400 transition-all active:scale-95 group/logout"
+                    className="flex items-center gap-2 px-6 py-3 sm:px-4 sm:py-2.5 rounded-2xl bg-white/5 sm:bg-transparent border border-white/5 sm:border-none text-white/30 hover:text-red-400 hover:bg-red-400/5 transition-all active:scale-95 group/logout"
                     title="Sign Out"
                   >
-                      <LogOut className="w-6 h-6 group-hover/logout:translate-x-0.5 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Sign Out</span>
+                      <LogOut className="w-5 h-5 group-hover/logout:translate-x-0.5 transition-transform" />
                   </button>
               </div>
           </div>
