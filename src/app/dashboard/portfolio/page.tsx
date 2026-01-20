@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { ArrowUpRight, ShieldCheck, Wallet, ArrowDownLeft, X, Check, Lock, Cpu, Clock } from "lucide-react";
-import { useTonWallet, TonConnectButton } from "@tonconnect/ui-react";
+import { useTonWallet, TonConnectButton, useTonConnectUI } from "@tonconnect/ui-react";
 import clsx from "clsx";
+import { Settings, LogOut, ChevronRight } from "lucide-react";
 
 export default function PortfolioPage() {
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
 
-  // Non-Custodial AA State (Now managed per-strategy)
-  // const [isAAContractDeployed, setIsAAContractDeployed] = useState(false);
-  // const [isDeploying, setIsDeploying] = useState(false);
-  
+  // Account Settings State
+  const [dailyLimit, setDailyLimit] = useState(1000);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isChangingLimit, setIsChangingLimit] = useState(false);
+  const [tempLimit, setTempLimit] = useState("1000");
   // Positions State (Mock data)
 
   // Positions State (Mock data)
@@ -54,7 +57,18 @@ export default function PortfolioPage() {
   //   }, 2000);
   // };
 
+  const handleDisconnect = async () => {
+    await tonConnectUI.disconnect();
+  };
 
+  const handleUpdateLimit = () => {
+    setIsChangingLimit(true);
+    setTimeout(() => {
+        setDailyLimit(Number(tempLimit));
+        setIsChangingLimit(false);
+        setShowSettings(false);
+    }, 1500);
+  };
   return (
     <div className="space-y-8 pb-24">
       
@@ -90,19 +104,38 @@ export default function PortfolioPage() {
               </div>
           </div>
       ) : (
-          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex items-center justify-between">
+          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 flex items-center justify-between group">
               <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#E2FF00]/10 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-[#E2FF00]/10 flex items-center justify-center border border-[#E2FF00]/20">
                       <ShieldCheck className="w-6 h-6 text-[#E2FF00]" />
                   </div>
                   <div>
                       <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-0.5">Primary W5 Account</p>
-                      <h3 className="text-sm font-bold text-white font-mono uppercase tracking-tighter">EQ...3f8a Status: Active</h3>
+                      <h3 className="text-sm font-bold text-white font-mono uppercase tracking-tighter">EQ...3f8a</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Status: Active</span>
+                      </div>
                   </div>
               </div>
-              <div className="text-right">
-                  <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mb-0.5">Daily Limit</p>
-                  <p className="text-sm font-bold text-white italic tracking-tighter">$1,000 USDT</p>
+              <div className="flex items-center gap-6">
+                  <div className="text-right">
+                      <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mb-0.5">Daily limit</p>
+                      <button 
+                        onClick={() => { setTempLimit(dailyLimit.toString()); setShowSettings(true); }}
+                        className="flex items-center gap-1.5 group/btn"
+                      >
+                          <p className="text-sm font-bold text-white italic tracking-tighter group-hover/btn:text-[#E2FF00] transition-colors">${dailyLimit.toLocaleString()} USDT</p>
+                          <Settings className="w-3 h-3 text-white/20 group-hover/btn:text-[#E2FF00] transition-colors" />
+                      </button>
+                  </div>
+                  <button 
+                    onClick={handleDisconnect}
+                    className="p-3 bg-white/5 border border-white/5 rounded-xl text-white/20 hover:text-red-400 hover:bg-red-400/5 hover:border-red-400/20 transition-all"
+                    title="Disconnect Wallet"
+                  >
+                      <LogOut className="w-4 h-4" />
+                  </button>
               </div>
           </div>
       )}
@@ -168,10 +201,60 @@ export default function PortfolioPage() {
             </div>
       </div>
 
-      {/* MODALS */}
+      {/* Account Settings Modal */}
+      {showSettings && (
+          <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                  <div className="flex justify-between items-start mb-6">
+                      <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Account Limits</h3>
+                          <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest">W5 Security Guardrails</p>
+                      </div>
+                      <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-white/5 rounded-full"><X className="w-5 h-5 text-white/40" /></button>
+                  </div>
 
+                  <div className="space-y-6 mb-10">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Daily Withdrawal Limit (USDT)</label>
+                        <div className="relative">
+                            <input 
+                                type="number"
+                                value={tempLimit}
+                                onChange={(e) => setTempLimit(e.target.value)}
+                                className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-5 text-white font-black italic focus:outline-none focus:border-[#E2FF00]/50 transition-all font-mono"
+                                placeholder="Enter limit..."
+                            />
+                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-[#E2FF00] uppercase italic">
+                                USDT / DAY
+                            </div>
+                        </div>
+                        <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest px-1 leading-relaxed">
+                            This limit is enforced at the W5 contract level. Any attempt to move more than this amount within 24h will be automatically rejected.
+                        </p>
+                      </div>
 
-      {/* Redemption Confirmation Overlay */}
+                      <div className="p-4 bg-[#E2FF00]/5 border border-[#E2FF00]/10 rounded-2xl flex gap-3">
+                          <Check className="w-4 h-4 text-[#E2FF00] shrink-0 mt-0.5" />
+                          <p className="text-[9px] text-[#E2FF00]/60 font-bold uppercase tracking-wider leading-relaxed">
+                              Decreasing limits is instant. Increasing limits requires a 24-hour security delay on-chain.
+                          </p>
+                      </div>
+                  </div>
+
+                  <button 
+                    onClick={handleUpdateLimit}
+                    disabled={isChangingLimit}
+                    className="w-full bg-[#E2FF00] text-[#020617] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
+                  >
+                      {isChangingLimit ? (
+                          <div className="w-4 h-4 border-2 border-[#020617]/20 border-t-[#020617] rounded-full animate-spin" />
+                      ) : (
+                          <>Propose Limit Update <ChevronRight className="w-4 h-4" /></>
+                      )}
+                  </button>
+              </div>
+          </div>
+      )}
       {redeemingId && (
           <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
               <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
