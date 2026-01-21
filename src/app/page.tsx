@@ -246,7 +246,7 @@ export default function LandingPage() {
       </section>
 
       {/* Clean Footer */}
-      <footer className="py-24 border-t border-white/5 text-center px-6">
+      <footer className="pt-24 pb-12 border-t border-white/5 text-center px-6">
         <div className="flex items-center justify-center gap-2 mb-12">
           <div className="text-xl">🍈</div>
           <span className="font-bold text-base tracking-tight lowercase">
