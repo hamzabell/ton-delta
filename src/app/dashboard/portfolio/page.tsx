@@ -11,6 +11,7 @@ import {
   Lock,
   Cpu,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useTonWallet,
@@ -63,6 +64,7 @@ export default function PortfolioPage() {
   ]);
 
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  const [panickingId, setPanickingId] = useState<number | null>(null);
   const [extendingId, setExtendingId] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -108,6 +110,15 @@ export default function PortfolioPage() {
       setIsProcessing(false);
       setExtendingId(null);
     }, 2000);
+  };
+
+  const confirmPanic = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setPositions((prev) => prev.filter((pos) => pos.id !== panickingId));
+      setIsProcessing(false);
+      setPanickingId(null);
+    }, 3000);
   };
 
   // const deployAAWallet = () => {
@@ -315,13 +326,21 @@ export default function PortfolioPage() {
                       </div>
                     </div>
 
-                    {/* Close Position Button */}
-                    <button
-                      onClick={() => handleRedeem(pos.id)}
-                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-white transition-colors"
-                    >
-                      Close Strategy
-                    </button>
+                    {/* Action Row */}
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button
+                        onClick={() => handleRedeem(pos.id)}
+                        className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-white transition-colors"
+                      >
+                        Close
+                      </button>
+                      <button
+                        onClick={() => setPanickingId(pos.id)}
+                        className="bg-red-500/10 text-red-500 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                      >
+                        PANIC EXIT
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -563,6 +582,90 @@ export default function PortfolioPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Panic Exit Modal */}
+      {panickingId && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-red-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(239,68,68,0.1)] animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-start mb-6">
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-red-500 uppercase italic tracking-tighter">
+                  EMERGENCY UNWIND
+                </h3>
+                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
+                  Atomic Wallet Settlement
+                </p>
+              </div>
+              <button
+                onClick={() => setPanickingId(null)}
+                className="p-2 hover:bg-white/5 rounded-full"
+              >
+                <X className="w-5 h-5 text-white/40" />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-8">
+              <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                    Execution Batch
+                  </p>
+                  <ul className="text-[9px] text-white/40 uppercase tracking-widest font-black space-y-1.5 mt-2">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1 h-1 rounded-full bg-red-500" />
+                      Close Short Perp (Storm Trade)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1 h-1 rounded-full bg-red-500" />
+                      Sell Spot Assets (swap.coffee)
+                    </li>
+                    <li className="flex items-center gap-2 text-white/60">
+                      <div className="w-1 h-1 rounded-full bg-[#E2FF00]" />
+                      Return TON to Main Wallet
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="text-white/30 uppercase text-[9px] font-black tracking-widest">
+                    Est. Return
+                  </span>
+                  <span className="text-white font-black italic">
+                    {positions
+                      .find((p) => p.id === panickingId)
+                      ?.value.toLocaleString()}{" "}
+                    TON
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={confirmPanic}
+              disabled={isProcessing}
+              className={clsx(
+                "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2",
+                isProcessing
+                  ? "bg-white/5 text-white/20 cursor-not-allowed"
+                  : "bg-red-500 text-white hover:bg-red-600 shadow-xl shadow-red-500/20",
+              )}
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>EXECUTE PANIC UNWIND</>
+              )}
+            </button>
+            <p className="text-[8px] text-white/20 text-center uppercase tracking-widest font-black mt-4">
+              Single Transaction • Atomic Settlement
+            </p>
           </div>
         </div>
       )}
