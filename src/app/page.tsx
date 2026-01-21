@@ -240,7 +240,7 @@ export default function LandingPage() {
           href="/whitepaper"
           className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-white transition-colors"
         >
-          Read Whitepaper v2.0
+          Read Whitepaper
           <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

@@ -54,7 +54,7 @@ export default function WhitepaperPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E2FF00]/10 border border-[#E2FF00]/20 mb-8">
             <FileText className="w-3 h-3 text-[#E2FF00]" />
             <span className="text-[10px] font-black uppercase tracking-widest text-[#E2FF00]">
-              Whitepaper v2.0 | January 2026
+              Whitepaper | January 2026
             </span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none mb-6">
