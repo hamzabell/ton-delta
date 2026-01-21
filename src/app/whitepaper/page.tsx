@@ -50,7 +50,7 @@ export default function WhitepaperPage() {
       </nav>
 
       <article className="pt-32 px-6 max-w-3xl mx-auto">
-        <header className="mb-20 text-center">
+        <header className="mb-20 text-left md:text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E2FF00]/10 border border-[#E2FF00]/20 mb-8">
             <FileText className="w-3 h-3 text-[#E2FF00]" />
             <span className="text-[10px] font-black uppercase tracking-widest text-[#E2FF00]">
@@ -62,7 +62,7 @@ export default function WhitepaperPage() {
             <br />
             Basis Trading for TON
           </h1>
-          <div className="h-1 w-20 bg-[#E2FF00] mx-auto"></div>
+          <div className="h-1 w-20 bg-[#E2FF00] md:mx-auto"></div>
         </header>
 
         <section className="space-y-12">
