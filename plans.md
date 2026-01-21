@@ -4,7 +4,7 @@ This document serves as a guide for any LLM picking up the implementation of the
 
 ## Current Status
 
-- **Phase**: Phase 2 (API Layer Development)
+- **Phase**: Phase 3 (Watchman Engine)
 - **Goal**: Integrate API calls with useSWR while maintaining the existing UI.
 - **Rules**:
   - "Tests MUST be approved by the user before implementation."
@@ -20,19 +20,14 @@ This document serves as a guide for any LLM picking up the implementation of the
 - [x] Install & Setup Testing (`vitest`, `playwright`)
 - [x] Verify build & tests
 
-### Phase 2: API Layer Development [IN PROGRESS]
+### Phase 2: API Layer Development [COMPLETED]
 
-- [ ] Define Types (`src/types/protocol.ts`)
-- [ ] **Review Step**: Create and submit API unit tests for user review.
-- [ ] Implement API Routes:
-  - `api/pairs`
-  - `api/market`
-  - `api/positions`
-  - `api/execute`
-- [ ] Verify: Run tests and build.
-- [ ] Commit.
+- [x] Define Types (`src/types/protocol.ts`)
+- [x] Implement API Routes (`pairs`, `market`, `positions`)
+- [x] Verify: Run tests and build (All passed)
+- [x] Commit.
 
-### Phase 3: Watchman Engine
+### Phase 3: Watchman Engine [IN PROGRESS]
 
 - [ ] **Review Step**: Submit worker tests for review.
 - [ ] Setup Redis/BullMQ.

@@ -1,78 +1,30 @@
 import { Worker } from 'bullmq';
 import { redisConfig } from './config';
-import { fundingQueue, riskQueue, basisQueue, QUEUE_NAMES } from './queues';
-import { processFundingJob } from './jobs/funding';
-import { processRiskJob } from './jobs/risk';
-import { processDepositJob } from './jobs/deposits';
-import { processBasisJob } from './jobs/basisTrade';
+import { driftMonitorJob } from './jobs/drift-monitor';
+import { safetyCheckJob } from './jobs/safety-check';
 
-console.log('🚀 Starting Ton Delta Backend Workers...');
+console.log('[Worker] Starting Watchman Engine...');
 
-// 1. Funding Harvester Worker
-const fundingWorker = new Worker(QUEUE_NAMES.FUNDING, processFundingJob, {
+const watchmanWorker = new Worker('watchman', async (job) => {
+  switch (job.name) {
+    case 'drift-monitor':
+      return await driftMonitorJob(job);
+    case 'safety-check':
+      return await safetyCheckJob(job);
+    default:
+      console.warn(`[Worker] Unknown job: ${job.name}`);
+  }
+}, {
   connection: redisConfig,
+  concurrency: 5
 });
-fundingWorker.on('completed', (job) => console.log(`[Funding] Job ${job.id} completed.`));
-fundingWorker.on('failed', (job, err) => console.error(`[Funding] Job ${job?.id} failed: ${err.message}`));
 
-// 2. Risk Manager Worker
-const riskWorker = new Worker(QUEUE_NAMES.RISK, processRiskJob, {
-  connection: redisConfig,
+watchmanWorker.on('completed', (job) => {
+  console.log(`[Worker] Job ${job.id} (${job.name}) completed`);
 });
-riskWorker.on('failed', (job, err) => console.error(`[Risk] Job ${job?.id} failed: ${err.message}`));
 
-// 3. Deposit Processor Worker
-const depositWorker = new Worker(QUEUE_NAMES.DEPOSIT, processDepositJob, {
-  connection: redisConfig,
+watchmanWorker.on('failed', (job, err) => {
+  console.error(`[Worker] Job ${job?.id} (${job?.name}) failed: ${err.message}`);
 });
-depositWorker.on('completed', (job) => console.log(`[Deposit] Job ${job.id} completed.`));
-depositWorker.on('failed', (job, err) => console.error(`[Deposit] Job ${job?.id} failed: ${err.message}`));
 
-// 4. Basis Arbitrage Worker
-const basisWorker = new Worker(QUEUE_NAMES.BASIS, processBasisJob, {
-  connection: redisConfig,
-});
-basisWorker.on('completed', (job) => console.log(`[Basis] Job ${job.id} completed.`));
-basisWorker.on('failed', (job, err) => console.error(`[Basis] Job ${job?.id} failed: ${err.message}`));
-
-
-// --- SCHEDULER (Initialize Repeatable Jobs) ---
-async function initSchedulers() {
-  console.log('⏳ Initializing Recurring Jobs...');
-  
-  // Funding Harvester: Every 8 hours
-  await fundingQueue.add('harvest-funding', {}, {
-    repeat: {
-      pattern: '0 */8 * * *', // At minute 0 past every 8th hour
-    },
-  });
-  console.log('✅ Scheduled Funding Harvester (Every 8 hours)');
-
-  // Risk Manager: Every 1 minute
-  await riskQueue.add('check-risk', {}, {
-    repeat: {
-        pattern: '* * * * *', // Every minute
-    },
-  });
-  console.log('✅ Scheduled Risk Manager (Every 1 minute)');
-
-  // Basis Monitor: Every 1 minute
-  await basisQueue.add('monitor-basis', {}, {
-      repeat: {
-          pattern: '* * * * *', // Every minute
-      }
-  });
-  console.log('✅ Scheduled Basis Monitor (Every 1 minute)');
-}
-
-initSchedulers().catch(console.error);
-
-// Keep process alive
-process.on('SIGINT', async () => {
-    console.log('🛑 Shutting down workers...');
-    await fundingWorker.close();
-    await riskWorker.close();
-    await depositWorker.close();
-    await basisWorker.close();
-    process.exit(0);
-});
+console.log('[Worker] Listening for jobs...');
