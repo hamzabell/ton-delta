@@ -48,6 +48,7 @@ export default function PortfolioPage() {
       grossProfit: 1280.2,
       status: "Meme",
       risk: "High",
+      sessionExpiry: Date.now() + 2 * 24 * 60 * 60 * 1000, // 2 days left
     },
     {
       id: 3,
@@ -57,10 +58,12 @@ export default function PortfolioPage() {
       grossProfit: 450.5,
       status: "Meme",
       risk: "High",
+      sessionExpiry: Date.now() + 6 * 24 * 60 * 60 * 1000, // 6 days left
     },
   ]);
 
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  const [extendingId, setExtendingId] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Profit Sharing Calculations (20% Cut)
@@ -89,6 +92,21 @@ export default function PortfolioPage() {
       setPositions((prev) => prev.filter((pos) => pos.id !== redeemingId));
       setIsProcessing(false);
       setRedeemingId(null);
+    }, 2000);
+  };
+
+  const confirmExtension = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setPositions((prev) =>
+        prev.map((pos) =>
+          pos.id === extendingId
+            ? { ...pos, sessionExpiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }
+            : pos,
+        ),
+      );
+      setIsProcessing(false);
+      setExtendingId(null);
     }, 2000);
   };
 
@@ -251,13 +269,59 @@ export default function PortfolioPage() {
                   </div>
 
                 <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="font-black text-base text-white italic tracking-tighter">
-                      {pos.value.toLocaleString()} TON
-                    </p>
-                    <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-wider">
-                      +{pos.grossProfit.toLocaleString()} TON Yield
-                    </p>
+                  <div className="text-right space-y-3">
+                    <div>
+                      <p className="font-black text-base text-white italic tracking-tighter">
+                        {pos.value.toLocaleString()} TON
+                      </p>
+                      <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-wider">
+                        +{pos.grossProfit.toLocaleString()} TON Yield
+                      </p>
+                    </div>
+
+                    {/* Session Expiry Heartbeat */}
+                    <div className="space-y-1.5 pt-1 border-t border-white/5">
+                      <div className="flex items-center justify-end gap-2 text-[10px] font-black uppercase tracking-widest italic group/expiry">
+                        <Clock
+                          className={clsx(
+                            "w-3 h-3 transition-colors",
+                            pos.sessionExpiry - Date.now() < 24 * 60 * 60 * 1000
+                              ? "text-red-500 animate-pulse"
+                              : "text-white/20",
+                          )}
+                        />
+                        <span
+                          className={clsx(
+                            pos.sessionExpiry - Date.now() < 24 * 60 * 60 * 1000
+                              ? "text-red-500"
+                              : "text-white/30",
+                          )}
+                        >
+                          {Math.max(
+                            0,
+                            Math.floor(
+                              (pos.sessionExpiry - Date.now()) /
+                                (24 * 60 * 60 * 1000),
+                            ),
+                          )}
+                          D Left
+                        </span>
+                        <button
+                          onClick={() => setExtendingId(pos.id)}
+                          className="bg-[#E2FF00]/10 text-[#E2FF00] px-2 py-0.5 rounded text-[8px] hover:bg-[#E2FF00]/20 transition-all border border-[#E2FF00]/20"
+                        >
+                          Heartbeat
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Close Position Button */}
+                    <button
+                      onClick={() => handleRedeem(pos.id)}
+                      className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-white transition-colors"
+                    >
+                      Close Strategy
+                    </button>
                   </div>
                 </div>
               </div>
@@ -444,6 +508,58 @@ export default function PortfolioPage() {
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>Atomic Settle & Close</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Heartbeat Extension Modal */}
+      {extendingId && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">
+                  Extension Required
+                </h3>
+                <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest mt-1">
+                  W5 Session Key Heartbeat
+                </p>
+              </div>
+              <button
+                onClick={() => setExtendingId(null)}
+                className="p-2 hover:bg-white/5 rounded-full"
+              >
+                <X className="w-5 h-5 text-white/40" />
+              </button>
+            </div>
+
+            <div className="space-y-6 mb-8 text-center py-4">
+              <div className="w-16 h-16 bg-[#E2FF00]/10 border border-[#E2FF00]/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Clock className="w-8 h-8 text-[#E2FF00]" />
+              </div>
+              <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black max-w-[250px] mx-auto leading-relaxed">
+                Extend the delegation authorization for another 7 days to
+                maintain position health.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={confirmExtension}
+                disabled={isProcessing}
+                className={clsx(
+                  "w-full py-5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                  isProcessing
+                    ? "bg-white/5 text-white/20 cursor-not-allowed"
+                    : "bg-[#E2FF00] text-[#020617] hover:bg-[#E2FF00]/90 shadow-xl shadow-[#E2FF00]/10",
+                )}
+              >
+                {isProcessing ? (
+                  <div className="w-4 h-4 border-2 border-[#020617]/20 border-t-[#020617] rounded-full animate-spin" />
+                ) : (
+                  <>Extend 7-Day Session</>
                 )}
               </button>
             </div>
