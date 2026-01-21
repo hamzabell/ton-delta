@@ -1,66 +1,80 @@
-# 🍈 pamelo.finance: Product Requirements Document & Investor Pitch
+# Product Requirements & Architecture Document: Pamelo.finance
 
-**The Vision:** To become the "Institutional Refiner" for TON’s retail volatility. We convert high-risk meme coin movements into low-risk, TON-denominated yield for 900M+ Telegram users.
+## 1. Executive Summary
 
-**The Problem:**
-
-- **Retail Burn:** Meme coin season (DOGS, NOT, REDO) creates massive hype, but retail users lose capital to 50% price corrections.
-- **Yield Gap:** TON holders have few ways to earn high yield without being "Long" on volatile assets.
-- **Complexity:** Professional "Basis Trading" (Cash & Carry) is currently only available to hedge funds and sophisticated bots.
-
-**The Solution:** Pamelo is a **Non-Custodial Basis Trading Protocol**. Using **TON W5 Account Abstraction**, we automate a delta-neutral strategy that harvests "Funding Rates" from meme coin speculators. Users earn institutional-grade yield while maintaining zero exposure to asset price crashes.
+**Pamelo.finance** is an institutional-grade "refining" protocol for the TON ecosystem, designed to convert retail liquidity from high-volatility assets into stable, delta-neutral yield. By utilizing a **Cash-and-Carry (Basis Trading)** model, the protocol extracts Funding Rate yields while neutralizing underlying price risk through a tri-pillar integration of Storm Trade, swap.coffee, and STON.fi.
 
 ---
 
-# 📊 Business Model & Monetization
+## 2. Core Mechanism & Mathematical Framework
 
-Pamelo operates on a **Pure Success Model**. We do not charge management fees or entry/exit fees. We only win when the user wins.
+The protocol's primary objective is to exploit the price difference (Basis) between the spot market and the perpetual futures market.
 
-- **Performance Fee:** **20%** of net yield generated during the 7-day session.
-- **User Share:** **80%** of net yield.
-- **Settlement:** Fees are automatically calculated and deducted at the end of the session or upon early redemption via smart contract.
+- **Basis Formula ():** Defined as . In bullish "contango" markets, , resulting in a positive funding rate paid to short-sellers.
 
----
+- **Delta-Neutral Identity:** To eliminate price sensitivity (), the protocol ensures the quantity of spot assets () matches the quantity of perpetual short contracts ().
 
-# 🛠️ Product Requirements Document (PRD) v2.1
+- **Total Equity Calculation ():** Sum of the Spot Value () and the Perpetual Equity ():
 
-## 1. Technical Architecture: The "Pure TON" Meme Loop
-
-### **Core Execution Logic (End-to-End)**
-
-For a user investing **1,000 TON** into a **$DOGS** strategy:
-
-1. **Onboarding:** User deploys a **W5 Pamelo Account** and signs a **7-day Session Key**.
-1. **Onboarding:** User deploys a **W5 Pamelo Account** and signs a **7-day Session Key**.
-1. **The Atomic Open (The "Brain"):**
-   - The Backend splits the 1,000 TON.
-   - **Long Leg:** Swaps **490 TON** for **$DOGS** via **swap.coffee**.
-   - **Short Leg:** Uses **510 TON** as collateral on **Storm Trade** to open a **1x Short** on $DOGS/TON.
-   - _Note: Using TON-native pairs avoids USDT slippage._
-
-1. **Real-Time Balancing (The "Watchman"):**
-   - The **Next.js Backend** monitors the **Delta** via **Redis-backed background workers**. If $DOGS price moves ±2%, the values of the Long and Short legs become unequal.
-   - The system executes a **Rebalance**. The backend sells or buys small amounts of $DOGS Spot to re-center the hedge to a perfect 1:1 ratio.
-
-1. **Max Loss Guardrail:**
-   - User sets a **100 TON Max Loss**.
-   - If total equity (Spot + Short) drops to 901 TON, the system triggers an **Emergency Liquidator**. All positions are market-sold back to native TON instantly.
-
-## 2. Technical Stack
-
-- **Frontend:** Next.js 16 (Turbopack), Tailwind CSS, TON Connect 2.0.
-- **Automation:** **Redis-backed Background Workers** within the Next.js runtime for monitoring, rebalancing triggers, and audit logging.
-- **Execution:** Next.js API Routes/Backend with **W5 Session Key** support.
-- **DeFi Layer:** swap.coffee SDK (Spot) & Storm Trade SDK (Perps).
-- **Database:** PostgreSQL (User states) & Redis (Real-time price/funding feeds).
+.
 
 ---
 
-# 📈 User Stories
+## 3. Technical Architecture (Next.js & Redis)
 
-| ID       | Feature           | User Story                                                                                                        |
-| -------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **US.1** | **W5 Deployment** | As a user, I want to deploy a W5 wallet in one click so I don't have to manage complex contract deployments.      |
-| **US.2** | **Yield Toggle**  | As a user, I want to see a "Hot List" of meme coin APRs so I can choose the most profitable farm.                 |
-| **US.3** | **Transparency**  | As a user, I want to see a live "Audit Ledger" of every rebalance made by the system so I know my funds are safe. |
-| **US.4** | **Panic Exit**    | As a user, I want a "Panic Button" to close all positions and return to TON in under 10 seconds.                  |
+The implementation replaces legacy n8n automation with a robust **Next.js** backend and **Redis-backed** task queues (e.g., BullMQ) to handle high-frequency monitoring and atomic execution.
+
+### 3.1 The Watchman Engine (Redis Integration)
+
+The "Watchman" is a background worker architecture that monitors the following metrics every block:
+
+- **Drift Monitoring:** Calculates the Drift Coefficient to trigger rebalancing if the spot and perp legs become imbalanced.
+
+- **Funding Rate Tracking:** Monitors the 24-hour Exponential Moving Average () of the funding rate ().
+
+- **Safety Polling:** Continuously compares current Total Equity () against the Principal Floor ().
+
+### 3.2 Integration Stack
+
+| Pillar        | Provider        | Role in Architecture                                     |
+| ------------- | --------------- | -------------------------------------------------------- |
+| **Execution** | **swap.coffee** | Smart router for spot entries () and emergency exits (). |
+
+|
+| **Hedging** | **Storm Trade** | Liquidity source for 1x leverage perpetual short positions ().
+
+|
+| **Productivity** | **STON.fi** | Vault infrastructure for liquid staking rewards during Stasis Mode.
+
+|
+
+---
+
+## 4. Safety & Operational Modes
+
+### 4.1 Stasis Mode (Negative Carry Protection)
+
+When markets enter backwardation () and , the Redis worker triggers an atomic sequence to prevent "negative carry":
+
+1.  **De-leveraging:** Close the Storm Trade short position.
+
+2.  **Liquidation:** Sell the spot asset via swap.coffee into TON.
+
+3.  **Migration:** Deposit 100% of recovered TON into STON.fi liquid staking to earn yield until market conditions improve.
+
+### 4.2 Max Loss Circuit Breaker
+
+Designed to prevent capital destruction during "black swan" events or oracle lags.
+
+- **Principal Floor ():** A hard floor typically set at of initial capital ().
+
+- **Atomic Unwind:** If , the system executes an immediate market exit: cancels pending orders, market-closes the Storm short, and executes a spot sale via swap.coffee.
+
+---
+
+## 5. Implementation Requirements
+
+- **Framework:** Next.js (App Router) for the dashboard and API routes.
+- **State Store:** Redis for caching real-time price feeds, funding rates, and tracking the .
+- **Task Scheduling:** BullMQ or similar for managing the "Watchman" heartbeat and executing atomic sequences across multiple protocols.
+- **Security:** Non-custodial framework ensuring all trades and migrations are signed via the user’s TON wallet.

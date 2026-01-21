@@ -7,16 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "ts-node --compiler-options '{\"module\":\"commonjs\"}' src/workers/index.ts"
+    "worker": "ts-node --compiler-options '{\"module\":\"commonjs\"}' src/workers/index.ts",
+    "test": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@prisma/client": "^7.2.0",
     "@swap-coffee/sdk": "^1.5.4",
     "@telegram-apps/sdk": "^3.11.8",
     "@tonconnect/ui-react": "^2.3.1",
+    "axios": "^1.13.2",
     "bullmq": "^5.66.5",
     "ccxt": "^4.5.32",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "ioredis": "^5.9.1",
     "lucide-react": "^0.562.0",
@@ -26,6 +30,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "rxjs": "^7.8.2",
+    "swr": "^2.3.8",
     "tailwind-merge": "^3.4.0",
     "ton": "^13.9.0",
     "ton-core": "^0.53.0",
@@ -33,13 +38,18 @@
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "jsdom": "^27.4.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.17"
   }
 }
