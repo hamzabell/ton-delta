@@ -1,69 +1,58 @@
-# TONcoin Fund Application: Pamelo.finance
+# pamelo.finance
 
-## 1. Executive Summary
-
-**Project Name:** Pamelo.finance
-**One-liner:** Delegated high-yield asset management on USDT-based TON native pairs via Non-Custodial Account Abstraction.
-
-**Problem:**
-DeFi participants on TON face "double volatility" (asset price + TON price) and complex risk management when seeking high yields. Existing yield aggregators often lack transparent risk guardrails or require active manual management.
-
-**Solution:**
-Pamelo.finance provides a professional, "set-and-forget" DeFi experience. By focusing exclusively on **USDT pairs**, we eliminate base currency volatility. Using **TON W5 Account Abstraction**, we enable non-custodial delegated trading where users retain ownership of assets while "Pamelo" executes strategies within predefined safety boundaries (Max Loss, Duration).
+**Non-custodial Basis Trading architecture for USDT-native yield on TON, powered by W5 Account Abstraction.**
 
 ---
 
-## 2. Technical Architecture & Innovation
+### Executive Summary
 
-Pamelo.finance is built as a Non-Custodial AA system leveraging **TON W5**.
+**Project:** pamelo.finance  
+**Stage:** Pre-Seed / Technical Prototype  
+**Founder:** [Akan Bassey](https://www.linkedin.com/in/akan-bassey-708941171/) (Senior Software Engineer @ EarlyNode)
 
-- **Non-Custodial Delegation:** Assets stay in the user's W5 wallet. Execution is delegated to Pamelo's backend via restricted **Session Keys**.
-- **Safety Guardrails:** Smart contract-level constraints prevent unauthorized withdrawals and enforce user-defined Max Loss thresholds.
-- **Deep Integration:** Native execution using:
-  - **swap.coffee:** For optimal routing on TON spot markets (USDT/TON, USDT/NOT, etc.).
-  - **Storm Trade:** For delta-neutral strategies and carry trade execution.
-- **Platform Sync:** A seamless Telegram Mini App (TMA) interface for one-click deployment and monitoring.
+**The Problem:** Earning predictable yield on TON is difficult. Liquid staking offers low returns (~4%) and exposes users to TON price volatility. Manual yield farming is complex and time-consuming.
 
----
-
-## 3. Market Alignment & Opportunity
-
-The TON ecosystem is experiencing a massive influx of USDT liquidity. Pamelo.finance is positioned to be the primary yield destination for this Liquidity:
-
-- **USDT Focus:** Reduces the exit barrier for conservative capital entering TON.
-- **Meme Growth:** Captures high-velocity volume in pairs like USDT/DOGS and USDT/NOT while providing a "Loss Safeguard" for retail users.
-- **Performance-First Model:** 20% performance fee aligns platform incentives directly with user profitability.
+**The Solution:** I am building the first automated **Basis Trading** (Cash and Carry) protocol on TON. Using TON W5 Account Abstraction, I enable users to execute multi-leg market-neutral strategies that capture high funding rates while keeping their principal 100% non-custodial.
 
 ---
 
-## 4. Business Model & Sustainability
+### Core Strategy: Delta-Neutral Basis Trading
 
-- **Revenue:** 20% Performance Fee on net profits.
-- **Settlement:** Atomic profit-sharing ensures the platform only collects fees when the user wins.
-- **Scalability:** The architecture allows for "Strategy Multipliers" where proven traders or bots can list strategies on the Pamelo SDK.
+Pamelo automates the "Basis Trade" to generate consistent yield regardless of market direction:
 
----
-
-## 5. Roadmap & Milestones
-
-- **Phase 1 (Current):** USDT Transition & Rebranding. Finalizing USDT-centric dashboard and W5 deployment flow.
-- **Phase 2:** Advanced Guardrails. Implementation of dynamic USDT-denominated Max Loss validation.
-- **Phase 3:** Mainnet Launch & Performance Settlement. Scaling to full non-custodial delegated execution with atomic profit sharing.
+1.  **The Long Leg:** A 1x spot position in a TON-native asset (e.g., TON, NOT, DOGS) using **swap.coffee**.
+2.  **The Short Leg:** A simultaneous 1x short perpetual position on **Storm Trade**.
+3.  **The Result:** A **Delta-Neutral** position with zero exposure to asset price volatility. The yield is generated directly from the **Funding Rate** spread between the spot and perpetual markets—historically one of the most reliable yield sources in crypto.
 
 ---
 
-## 6. Team & Vision
+### The Competitive Advantage
 
-The team behind Pamelo.finance consists of experienced TON developers and DeFi architects focused on bringing institutional-grade risk management to TON retail users. Our vision is to become the "Standard Oil" for TON liquidity — the essential refiner that turns raw assets into safe, optimized yield.
-
----
-
-## 7. Metrics & Traction
-
-- [Insert current TVL/User metrics if available]
-- [Insert Testnet performance data if available]
+- **Yield Stability:** Unlike traditional farming, we provide USDT-denominated returns. If TON price drops 20%, the user's principal remains stable.
+- **Non-Custodial W5 Delegation:** This is our core innovation. I use **W5 Session Keys** so users don't "deposit" funds into a custodial vault. Instead, they delegate trading authority to my execution engine with strict on-chain guardrails (Max Loss, Daily Budget).
+- **Trustless Architecture:** Every step—from opening the hedge to profit settlement—is verifiable through a real-time Audit Ledger.
 
 ---
 
-**Link to Docs:** [Requirements](file:///Users/apple/Documents/ton-delta/docs/requirements.md)
-**GitHub:** [ton-delta Repository](https://github.com/hamzabell/ton-delta)
+### Technical Infrastructure
+
+- **Account Abstraction:** Full W5 standard integration for restricted session delegation.
+- **DEX Aggregation:** **swap.coffee** for optimized spot entry/exit with minimal slippage.
+- **Derivatives Layer:** **Storm Trade** for high-efficiency hedging and funding rate capture.
+- **Atomic Profit Split:** Protocol-level 20% performance fee settlement—no profit, no fee.
+
+---
+
+### Market Opportunity
+
+With over **$1B in native USDT** now on TON, there is a massive demand for stablecoin-denominated yield. Pamelo acts as the "Institutional Refiner" for this liquidity, turning raw assets into low-risk, sovereign yield.
+
+---
+
+### Founder
+
+I am a Senior Software Engineer with a focus on high-performance crypto trading infrastructure.
+
+- **Experience:** I spearheaded the development of the web interface for **Bananagun**, a leading crypto trading platform. I have a proven track record of building reliable, high-velocity systems at **EarlyNode** and **Sterling Bank**.
+- **Vision:** My goal is to normalize professional-grade, non-custodial asset management on TON.
+
