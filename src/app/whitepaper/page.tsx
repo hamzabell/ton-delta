@@ -28,7 +28,7 @@ const WATCHMAN_DIAGRAM = `graph TD
 
 export default function WhitepaperPage() {
   return (
-    <div className="min-h-screen bg-[#020617] text-white font-sans selection:bg-[#E2FF00]/20 pb-32">
+    <div className="min-h-screen bg-[#020617] text-white font-sans selection:bg-[#E2FF00]/20">
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl">
         <div className="flex items-center justify-between max-w-5xl mx-auto px-6 py-4">
