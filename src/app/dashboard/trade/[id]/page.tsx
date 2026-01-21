@@ -46,8 +46,10 @@ const PAIR_DATA: Record<string, any> = {
 
 export default function TradePage() {
   const params = useParams();
-  const pairId = (params.id as string) || "usdt-ton";
-  const data = PAIR_DATA[pairId] || PAIR_DATA["usdt-ton"];
+  const pairId = (params.id as string) || "dogs-ton";
+  const data = PAIR_DATA[pairId] || PAIR_DATA["dogs-ton"];
+
+  if (!data) return null; // Safety check
 
   const [amount, setAmount] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
