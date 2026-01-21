@@ -63,16 +63,31 @@ model Deposit {
 }
 
 model Position {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  strategyId String
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  pairId          String   // e.g. "dogs-ton"
 
-  principal Float    // Initial Deposit
-  shares    Float    // LP Tokens owned
+  // Capital tracking
+  spotAmount      Float    // Quantity of spot tokens
+  perpAmount      Float    // Quantity of short contracts
+  
+  // Value tracking (Snapshot at last check)
+  spotValue       Float    
+  perpValue       Float
+  totalEquity     Float    
+  principalFloor  Float    // Stop-loss trigger level
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Metrics
+  entryPrice      Float
+  currentPrice    Float
+  fundingRate     Float
+  driftCoefficient Float   // Delta imbalance
+  
+  status          String   @default("active") // "active", "stasis", "closed"
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model FundingEvent {

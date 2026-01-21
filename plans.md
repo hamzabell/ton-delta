@@ -4,7 +4,7 @@ This document serves as a guide for any LLM picking up the implementation of the
 
 ## Current Status
 
-- **Phase**: Phase 1 (Foundation & Setup)
+- **Phase**: Phase 2 (API Layer Development)
 - **Goal**: Integrate API calls with useSWR while maintaining the existing UI.
 - **Rules**:
   - "Tests MUST be approved by the user before implementation."
@@ -13,13 +13,14 @@ This document serves as a guide for any LLM picking up the implementation of the
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation & Setup
+### Phase 1: Foundation & Setup [COMPLETED]
 
-- [ ] Update `.env.example`
-- [ ] Install dependencies (`swr`, `axios`, `date-fns`)
-- [ ] Verify build
+- [x] Update `.env.example`
+- [x] Install dependencies (`swr`, `axios`, `date-fns`)
+- [x] Install & Setup Testing (`vitest`, `playwright`)
+- [x] Verify build & tests
 
-### Phase 2: API Layer Development
+### Phase 2: API Layer Development [IN PROGRESS]
 
 - [ ] Define Types (`src/types/protocol.ts`)
 - [ ] **Review Step**: Create and submit API unit tests for user review.
