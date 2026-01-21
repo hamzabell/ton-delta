@@ -234,7 +234,7 @@ export default function LandingPage() {
           Automation Architecture
         </h3>
         <p className="max-w-md mx-auto text-xs text-white/30 font-medium uppercase tracking-[0.2em] leading-relaxed mb-12">
-          A self-hosted, high-availability n8n instance acts as the protocol's decentralized "keep-alive" bot, managing delta drift and deleverage protection 24/7.
+          A high-availability Next.js backend powered by a Redis task queue acts as the protocol's decentralized "keep-alive" bot, managing delta drift and deleverage protection 24/7.
         </p>
         <Link
           href="/whitepaper"

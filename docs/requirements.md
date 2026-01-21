@@ -31,25 +31,26 @@ Pamelo operates on a **Pure Success Model**. We do not charge management fees or
 For a user investing **1,000 TON** into a **$DOGS** strategy:
 
 1. **Onboarding:** User deploys a **W5 Pamelo Account** and signs a **7-day Session Key**.
-2. **The Atomic Open (The "Brain"):**
+1. **Onboarding:** User deploys a **W5 Pamelo Account** and signs a **7-day Session Key**.
+1. **The Atomic Open (The "Brain"):**
    - The Backend splits the 1,000 TON.
    - **Long Leg:** Swaps **490 TON** for **$DOGS** via **swap.coffee**.
    - **Short Leg:** Uses **510 TON** as collateral on **Storm Trade** to open a **1x Short** on $DOGS/TON.
    - _Note: Using TON-native pairs avoids USDT slippage._
 
-3. **Real-Time Balancing (The "Watchman"):**
-   - **n8n** monitors the **Delta**. If $DOGS price moves ±2%, the values of the Long and Short legs become unequal.
-   - n8n triggers a **Rebalance Webhook**. The backend sells or buys small amounts of $DOGS Spot to re-center the hedge to a perfect 1:1 ratio.
+1. **Real-Time Balancing (The "Watchman"):**
+   - The **Next.js Backend** monitors the **Delta** via **Redis-backed background workers**. If $DOGS price moves ±2%, the values of the Long and Short legs become unequal.
+   - The system executes a **Rebalance**. The backend sells or buys small amounts of $DOGS Spot to re-center the hedge to a perfect 1:1 ratio.
 
-4. **Max Loss Guardrail:**
+1. **Max Loss Guardrail:**
    - User sets a **100 TON Max Loss**.
-   - If total equity (Spot + Short) drops to 901 TON, n8n triggers an **Emergency Liquidator**. All positions are market-sold back to native TON instantly.
+   - If total equity (Spot + Short) drops to 901 TON, the system triggers an **Emergency Liquidator**. All positions are market-sold back to native TON instantly.
 
 ## 2. Technical Stack
 
 - **Frontend:** Next.js 16 (Turbopack), Tailwind CSS, TON Connect 2.0.
-- **Automation:** **n8n** (Self-hosted) for monitoring, rebalancing triggers, and audit logging.
-- **Execution:** Node.js Backend with **W5 Session Key** support.
+- **Automation:** **Redis-backed Background Workers** within the Next.js runtime for monitoring, rebalancing triggers, and audit logging.
+- **Execution:** Next.js API Routes/Backend with **W5 Session Key** support.
 - **DeFi Layer:** swap.coffee SDK (Spot) & Storm Trade SDK (Perps).
 - **Database:** PostgreSQL (User states) & Redis (Real-time price/funding feeds).
 
@@ -57,9 +58,9 @@ For a user investing **1,000 TON** into a **$DOGS** strategy:
 
 # 📈 User Stories
 
-| ID       | Feature           | User Story                                                                                                   |
-| -------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| **US.1** | **W5 Deployment** | As a user, I want to deploy a W5 wallet in one click so I don't have to manage complex contract deployments. |
-| **US.2** | **Yield Toggle**  | As a user, I want to see a "Hot List" of meme coin APRs so I can choose the most profitable farm.            |
-| **US.3** | **Transparency**  | As a user, I want to see a live "Audit Ledger" of every rebalance made by n8n so I know my funds are safe.   |
-| **US.4** | **Panic Exit**    | As a user, I want a "Panic Button" to close all positions and return to TON in under 10 seconds.             |
+| ID       | Feature           | User Story                                                                                                        |
+| -------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **US.1** | **W5 Deployment** | As a user, I want to deploy a W5 wallet in one click so I don't have to manage complex contract deployments.      |
+| **US.2** | **Yield Toggle**  | As a user, I want to see a "Hot List" of meme coin APRs so I can choose the most profitable farm.                 |
+| **US.3** | **Transparency**  | As a user, I want to see a live "Audit Ledger" of every rebalance made by the system so I know my funds are safe. |
+| **US.4** | **Panic Exit**    | As a user, I want a "Panic Button" to close all positions and return to TON in under 10 seconds.                  |

@@ -140,15 +140,15 @@ export default function WhitepaperPage() {
             </p>
 
             <h3 className="text-lg font-bold uppercase tracking-tight text-white border-l-2 border-[#E2FF00] pl-4">
-              3.2. n8n Automation Engine
+              3.2. Redis-Backed Automation Engine
             </h3>
             <p className="text-white/60 leading-relaxed mb-8">
-              A self-hosted, high-availability <strong className="text-white">n8n</strong> instance acts as the protocol's decentralized "keep-alive" bot, managing rebalances and deleverage protection.
+              A high-availability <strong className="text-white">Redis</strong> task queue within the <strong className="text-white">Next.js</strong> infrastructure acts as the protocol's decentralized "keep-alive" bot, managing rebalances and deleverage protection.
             </p>
             
             <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
               <Mermaid chart={WATCHMAN_DIAGRAM} />
-              <p className="text-[10px] text-center mt-4 text-white/20 font-bold uppercase tracking-[0.2em]">Fig 1. n8n Watchman Logic Flow</p>
+              <p className="text-[10px] text-center mt-4 text-white/20 font-bold uppercase tracking-[0.2em]">Fig 1. Next.js + Redis Watchman Logic Flow</p>
             </div>
           </div>
 
@@ -162,7 +162,7 @@ export default function WhitepaperPage() {
                 <ShieldCheck className="w-6 h-6 text-[#E2FF00] mb-4" />
                 <h4 className="font-black italic uppercase text-sm mb-2">Max Loss Guardrail</h4>
                 <p className="text-xs text-white/40 leading-relaxed">
-                  Every 60 seconds, n8n calculates total equity. If it falls below the user-defined Capital Floor, the Emergency Liquidator triggers an instant unwind.
+                  Every 60 seconds, the background worker calculates total equity. If it falls below the user-defined Capital Floor, the Emergency Liquidator triggers an instant unwind.
                 </p>
               </div>
               <div className="p-6 bg-white/5 border border-white/10 rounded-2xl">
@@ -194,7 +194,7 @@ export default function WhitepaperPage() {
                     ["1. Select", "Choose a Meme Vault", "Fetch real-time funding rates"],
                     ["2. Deposit", "Input TON & Max Loss", "Deploy W5 and sign Session Key"],
                     ["3. Refine", "Click 'Start Refining'", "Execute Atomic Open"],
-                    ["4. Monitor", "View Live Audit Ledger", "n8n polls and logs rebalances"],
+                    ["4. Monitor", "View Live Audit Ledger", "Backend polls and logs rebalances"],
                     ["5. Exit", "Hit 'Panic Button'", "Execute Emergency Unwind"],
                   ].map(([step, ui, backend], i) => (
                     <tr key={i} className="hover:bg-white/[0.02] transition-colors">
@@ -232,7 +232,7 @@ export default function WhitepaperPage() {
           <div className="pt-12 border-t border-white/5">
             <p className="text-xl font-black italic text-white uppercase tracking-tighter mb-4">Conclusion</p>
             <p className="text-white/60 leading-relaxed italic">
-              Pamelo.finance is the first protocol to turn Telegram’s "Meme Mania" into a sustainable, institutional-grade income stream. By automating complex Basis Trading through the W5 wallet, we provide a safe harbor for capital in the volatile TON sea.
+              Pamelo.finance is the first protocol to turn Telegram’s "Meme Mania" into a sustainable, institutional-grade income stream. By automating complex Basis Trading through the W5 wallet, our Next.js + Redis architecture ensures atomic rebalancing and capital safety in the volatile TON sea.
             </p>
           </div>
         </section>
