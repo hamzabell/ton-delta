@@ -66,6 +66,9 @@ export default function PortfolioPage() {
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [panickingId, setPanickingId] = useState<number | null>(null);
   const [extendingId, setExtendingId] = useState<number | null>(null);
+  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
+    null,
+  );
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Profit Sharing Calculations (20% Cut)
@@ -169,7 +172,7 @@ export default function PortfolioPage() {
 
       {/* 2. Unified Onboarding / Deployment Flow */}
       {!wallet ? (
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
+        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 flex flex-col items-center text-center space-y-6">
           <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
             <Wallet className="w-8 h-8 text-white/10" />
           </div>
@@ -186,7 +189,7 @@ export default function PortfolioPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white/[0.03] border border-white/5 rounded-3xl overflow-hidden flex flex-col group transition-all hover:bg-white/[0.04]">
+        <div className="bg-white/[0.03] border border-white/5 rounded-2xl overflow-hidden flex flex-col group transition-all hover:bg-white/[0.04]">
           {/* Identity & Budget Section */}
           <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-8">
             <div className="flex items-start sm:items-center gap-5 flex-1">
@@ -255,98 +258,43 @@ export default function PortfolioPage() {
         <div className="space-y-3">
           {positions.length > 0 ? (
             positions.map((pos) => (
-              <div
+              <button
                 key={pos.id}
-                className="p-5 bg-white/[0.03] border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/[0.05] transition-all relative overflow-hidden"
+                onClick={() => setSelectedPositionId(pos.id)}
+                className="w-full text-left p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/[0.04] transition-all relative overflow-hidden active:scale-[0.98]"
               >
-                {/* Active Status Glow */}
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#E2FF00]/40" />
-
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/40 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/20 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
                     {pos.icon}
                   </div>
                   <div>
-                    <p className="font-black text-base text-white italic tracking-tighter uppercase">
+                    <h3 className="font-black text-base text-white italic tracking-tighter uppercase whitespace-nowrap">
                       {pos.pair}
-                    </p>
-                      <div className="flex items-center gap-1 text-[#E2FF00] bg-[#E2FF00]/10 px-2 py-0.5 rounded-full border border-[#E2FF00]/20 shadow-[0_0_10px_rgba(226,255,0,0.05)]">
-                        <div className="w-1 h-1 rounded-full bg-[#E2FF00] animate-pulse" />
-                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">
-                          W5 Active
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                <div className="flex items-center gap-6">
-                  <div className="text-right space-y-3">
-                    <div>
-                      <p className="font-black text-base text-white italic tracking-tighter">
-                        {pos.value.toLocaleString()} TON
-                      </p>
-                      <p className="text-[9px] text-[#E2FF00] font-black uppercase tracking-wider">
-                        +{pos.grossProfit.toLocaleString()} TON Yield
-                      </p>
-                    </div>
-
-                    {/* Session Expiry Heartbeat */}
-                    <div className="space-y-1.5 pt-1 border-t border-white/5">
-                      <div className="flex items-center justify-end gap-2 text-[10px] font-black uppercase tracking-widest italic group/expiry">
-                        <Clock
-                          className={clsx(
-                            "w-3 h-3 transition-colors",
-                            pos.sessionExpiry - Date.now() < 24 * 60 * 60 * 1000
-                              ? "text-red-500 animate-pulse"
-                              : "text-white/20",
-                          )}
-                        />
-                        <span
-                          className={clsx(
-                            pos.sessionExpiry - Date.now() < 24 * 60 * 60 * 1000
-                              ? "text-red-500"
-                              : "text-white/30",
-                          )}
-                        >
-                          {Math.max(
-                            0,
-                            Math.floor(
-                              (pos.sessionExpiry - Date.now()) /
-                                (24 * 60 * 60 * 1000),
-                            ),
-                          )}
-                          D Left
-                        </span>
-                        <button
-                          onClick={() => setExtendingId(pos.id)}
-                          className="bg-[#E2FF00]/10 text-[#E2FF00] px-2 py-0.5 rounded text-[8px] hover:bg-[#E2FF00]/20 transition-all border border-[#E2FF00]/20"
-                        >
-                          Heartbeat
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Action Row */}
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                      <button
-                        onClick={() => handleRedeem(pos.id)}
-                        className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-white transition-colors"
-                      >
-                        Close
-                      </button>
-                      <button
-                        onClick={() => setPanickingId(pos.id)}
-                        className="bg-red-500/10 text-red-500 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                      >
-                        PANIC EXIT
-                      </button>
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="w-1 h-1 rounded-full bg-[#E2FF00] shadow-[0_0_8px_rgba(226,255,0,0.4)] animate-pulse" />
+                      <span className="text-[8px] font-black text-[#E2FF00]/30 uppercase tracking-[0.2em] leading-none">
+                        Active Position
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
+
+                <div className="text-right">
+                  <p className="font-black text-lg text-white italic tracking-tighter leading-none">
+                    {pos.value.toLocaleString()}{" "}
+                    <span className="text-[10px] not-italic text-white/10 ml-0.5">
+                      TON
+                    </span>
+                  </p>
+                  <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.4em] italic mt-2">
+                    Tap to Manage
+                  </p>
+                </div>
+              </button>
             ))
           ) : (
-            <div className="p-12 text-center border border-dashed border-white/5 rounded-3xl">
+            <div className="p-12 text-center border border-dashed border-white/5 rounded-2xl">
               <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.4em] italic leading-relaxed">
                 No active delegations.
                 <br />
@@ -365,7 +313,7 @@ export default function PortfolioPage() {
           Capital Ledger
         </h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-5">
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
             <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">
               Pamelo Equity
             </p>
@@ -373,7 +321,7 @@ export default function PortfolioPage() {
               {netEquity.toLocaleString()} TON
             </p>
           </div>
-          <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-5">
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
             <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">
               Liquid Wallet
             </p>
@@ -387,7 +335,7 @@ export default function PortfolioPage() {
       {/* Account Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-2xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-start mb-6">
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">
@@ -454,9 +402,110 @@ export default function PortfolioPage() {
           </div>
         </div>
       )}
+
+      {selectedPositionId && !panickingId && !extendingId && !redeemingId && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-2xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/30 border border-white/10 text-lg italic">
+                  {positions.find((p) => p.id === selectedPositionId)?.icon}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter leading-none">
+                    {positions.find((p) => p.id === selectedPositionId)?.pair}
+                  </h3>
+                  <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest mt-1">
+                    Institutional Vault
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPositionId(null)}
+                className="p-2 hover:bg-white/5 rounded-full"
+              >
+                <X className="w-5 h-5 text-white/40" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="p-5 bg-white/5 rounded-2xl space-y-1">
+                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                  Principal Value
+                </p>
+                <p className="text-lg font-black text-white italic font-mono">
+                  {positions
+                    .find((p) => p.id === selectedPositionId)
+                    ?.value.toLocaleString()}{" "}
+                  TON
+                </p>
+              </div>
+              <div className="p-5 bg-white/5 rounded-2xl space-y-1">
+                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                  Accumulated Yield
+                </p>
+                <p className="text-lg font-black text-[#E2FF00] italic font-mono">
+                  +
+                  {positions
+                    .find((p) => p.id === selectedPositionId)
+                    ?.grossProfit.toLocaleString()}{" "}
+                  TON
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-10">
+              <div className="px-5 py-4 border border-white/5 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-white/20" />
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                    Session Key Expiry
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-black text-white italic">
+                    {Math.max(
+                      0,
+                      Math.floor(
+                        ((positions.find((p) => p.id === selectedPositionId)
+                          ?.sessionExpiry || 0) -
+                          Date.now()) /
+                          (24 * 60 * 60 * 1000),
+                      ),
+                    )}
+                    D Left
+                  </span>
+                  <button
+                    onClick={() => setExtendingId(selectedPositionId)}
+                    className="text-[9px] font-black text-[#E2FF00] bg-[#E2FF00]/10 px-2 py-1 rounded-md uppercase tracking-widest"
+                  >
+                    Extend
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setRedeemingId(selectedPositionId)}
+                className="py-5 bg-white/5 text-white/40 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5"
+              >
+                Close & Settle
+              </button>
+              <button
+                onClick={() => setPanickingId(selectedPositionId)}
+                className="py-5 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+              >
+                PANIC EXIT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {redeemingId && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 z-[130] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-2xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">
@@ -474,69 +523,75 @@ export default function PortfolioPage() {
               </button>
             </div>
 
-            <div className="p-5 bg-white/5 rounded-2xl space-y-4 mb-8">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+            <div className="p-6 bg-white/5 rounded-2xl space-y-4 mb-8">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white/30 uppercase tracking-widest">
                   Gross Profit
                 </span>
-                <span className="text-sm font-bold text-white font-mono">
+                <span className="font-bold text-white font-mono">
                   {positions
                     .find((p) => p.id === redeemingId)
-                    ?.grossProfit.toLocaleString()} TON
+                    ?.grossProfit.toLocaleString()}
+                  TON
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white/30 uppercase tracking-widest">
                   Protocol Fee (20%)
                 </span>
-                <span className="text-sm font-bold text-[#E2FF00] italic font-mono">
-                  -{(
+                <span className="font-bold text-[#E2FF00] italic font-mono">
+                  -
+                  {(
                     (positions.find((p) => p.id === redeemingId)?.grossProfit ||
                       0) * 0.2
-                  ).toLocaleString()} TON
+                  ).toLocaleString()}
+                  TON
                 </span>
               </div>
               <div className="h-px bg-white/5" />
               <div className="flex justify-between items-center text-emerald-400">
-                <span className="text-[10px] font-bold uppercase tracking-widest">
-                  Net Redemption Value
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  Net Redemption
                 </span>
-                <span className="text-lg font-black font-mono">
+                <span className="text-xl font-black font-mono">
                   {(
-                    (positions.find((p) => p.id === redeemingId)?.value || 0) -
+                    (positions.find((p) => p.id === redeemingId)?.value || 0) +
                     (positions.find((p) => p.id === redeemingId)?.grossProfit ||
                       0) *
-                      0.2
-                  ).toLocaleString()} TON
+                      0.8
+                  ).toLocaleString()}
+                  TON
                 </span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <button
-                onClick={confirmRedeem}
-                disabled={isProcessing}
-                className={clsx(
-                  "w-full py-5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isProcessing
-                    ? "bg-white/5 text-white/20 cursor-not-allowed"
-                    : "bg-white text-[#020617] hover:bg-white/90",
-                )}
-              >
-                {isProcessing ? (
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>Atomic Settle & Close</>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                confirmRedeem();
+                setSelectedPositionId(null);
+              }}
+              disabled={isProcessing}
+              className={clsx(
+                "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2",
+                isProcessing
+                  ? "bg-white/5 text-white/20 cursor-not-allowed"
+                  : "bg-white text-[#020617] hover:bg-white/90",
+              )}
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Atomic Settle & Close</>
+              )}
+            </button>
           </div>
         </div>
       )}
+
       {/* Heartbeat Extension Modal */}
       {extendingId && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 z-[130] flex items-end justify-center px-6 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-white/10 rounded-2xl p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">
@@ -554,41 +609,40 @@ export default function PortfolioPage() {
               </button>
             </div>
 
-            <div className="space-y-6 mb-8 text-center py-4">
-              <div className="w-16 h-16 bg-[#E2FF00]/10 border border-[#E2FF00]/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                <Clock className="w-8 h-8 text-[#E2FF00]" />
+            <div className="space-y-6 mb-8 text-center py-6">
+              <div className="w-20 h-20 bg-[#E2FF00]/10 border border-[#E2FF00]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-10 h-10 text-[#E2FF00]" />
               </div>
-              <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black max-w-[250px] mx-auto leading-relaxed">
+              <p className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-black max-w-[280px] mx-auto leading-relaxed">
                 Extend the delegation authorization for another 7 days to
-                maintain position health.
+                maintain position health and yield compounding.
               </p>
             </div>
 
-            <div className="space-y-3">
-              <button
-                onClick={confirmExtension}
-                disabled={isProcessing}
-                className={clsx(
-                  "w-full py-5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isProcessing
-                    ? "bg-white/5 text-white/20 cursor-not-allowed"
-                    : "bg-[#E2FF00] text-[#020617] hover:bg-[#E2FF00]/90 shadow-xl shadow-[#E2FF00]/10",
-                )}
-              >
-                {isProcessing ? (
-                  <div className="w-4 h-4 border-2 border-[#020617]/20 border-t-[#020617] rounded-full animate-spin" />
-                ) : (
-                  <>Extend 7-Day Session</>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={confirmExtension}
+              disabled={isProcessing}
+              className={clsx(
+                "w-full py-5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2",
+                isProcessing
+                  ? "bg-white/5 text-white/20 cursor-not-allowed"
+                  : "bg-[#E2FF00] text-[#020617] hover:bg-[#E2FF00]/90 shadow-xl shadow-[#E2FF00]/10",
+              )}
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-[#020617]/20 border-t-[#020617] rounded-full animate-spin" />
+              ) : (
+                <>Extend 7-Day Session</>
+              )}
+            </button>
           </div>
         </div>
       )}
+
       {/* Panic Exit Modal */}
       {panickingId && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0B1221] border border-red-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(239,68,68,0.1)] animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 z-[130] flex items-end justify-center px-6 pb-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0B1221] border border-red-500/30 rounded-2xl p-8 shadow-[0_0_50px_rgba(239,68,68,0.1)] animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-start mb-6">
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-red-500 uppercase italic tracking-tighter">
@@ -607,34 +661,34 @@ export default function PortfolioPage() {
             </div>
 
             <div className="space-y-4 mb-8">
-              <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
+              <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-5">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                <div>
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3">
                     Execution Batch
                   </p>
-                  <ul className="text-[9px] text-white/40 uppercase tracking-widest font-black space-y-1.5 mt-2">
-                    <li className="flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-red-500" />
-                      Close Short Perp (Storm Trade)
+                  <ul className="text-[10px] text-white/40 uppercase tracking-widest font-black space-y-2">
+                    <li className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      Close Short Perp
                     </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-red-500" />
-                      Sell Spot Assets (swap.coffee)
+                    <li className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      Sell Spot Assets
                     </li>
-                    <li className="flex items-center gap-2 text-white/60">
-                      <div className="w-1 h-1 rounded-full bg-[#E2FF00]" />
-                      Return TON to Main Wallet
+                    <li className="flex items-center gap-3 text-white/60">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#E2FF00]" />
+                      Return TON to Wallet
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
-                <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="text-white/30 uppercase text-[9px] font-black tracking-widest">
+              <div className="p-6 bg-white/5 border border-white/5 rounded-2xl">
+                <div className="flex justify-between items-center text-sm font-mono">
+                  <span className="text-white/30 uppercase text-[10px] font-black tracking-widest">
                     Est. Return
                   </span>
                   <span className="text-white font-black italic">
@@ -648,7 +702,10 @@ export default function PortfolioPage() {
             </div>
 
             <button
-              onClick={confirmPanic}
+              onClick={() => {
+                confirmPanic();
+                setSelectedPositionId(null);
+              }}
               disabled={isProcessing}
               className={clsx(
                 "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2",
@@ -663,9 +720,6 @@ export default function PortfolioPage() {
                 <>EXECUTE PANIC UNWIND</>
               )}
             </button>
-            <p className="text-[8px] text-white/20 text-center uppercase tracking-widest font-black mt-4">
-              Single Transaction • Atomic Settlement
-            </p>
           </div>
         </div>
       )}

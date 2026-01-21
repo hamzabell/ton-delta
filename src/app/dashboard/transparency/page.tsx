@@ -73,7 +73,7 @@ export default function TransparencyPage() {
       {/* Asset Switcher - Dropdown Trigger */}
       <button
         onClick={() => setIsSheetOpen(true)}
-        className="w-full flex items-center justify-between bg-white/[0.03] p-5 rounded-3xl border border-white/5 hover:bg-white/[0.06] hover:border-[#E2FF00]/20 transition-all group"
+        className="w-full flex items-center justify-between bg-white/[0.03] p-5 rounded-2xl border border-white/5 hover:bg-white/[0.06] hover:border-[#E2FF00]/20 transition-all group"
       >
         <div className="flex flex-col items-start gap-1">
           <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">
@@ -90,7 +90,7 @@ export default function TransparencyPage() {
 
       {/* Health Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-white/[0.03] border border-white/5 rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 relative overflow-hidden group">
+        <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 sm:p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Activity className="w-8 h-8 sm:w-12 sm:h-12" />
           </div>
@@ -104,7 +104,7 @@ export default function TransparencyPage() {
             Meme Alpha Verified
           </p>
         </div>
-        <div className="bg-white/[0.03] border border-white/5 rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 relative overflow-hidden group">
+        <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 sm:p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <ShieldCheck className="w-8 h-8 sm:w-12 sm:h-12" />
           </div>
@@ -163,7 +163,7 @@ export default function TransparencyPage() {
             className="fixed inset-0 bg-black/90 backdrop-blur-md"
             onClick={() => setIsSheetOpen(false)}
           />
-          <div className="relative w-full max-w-sm bg-[#070B14] border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col max-h-[75vh] animate-in slide-in-from-bottom-full duration-500 overflow-hidden">
+          <div className="relative w-full max-w-sm bg-[#070B14] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[75vh] animate-in slide-in-from-bottom-full duration-500 overflow-hidden">
             {/* Decorative Handle */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-4 shrink-0" />
 
@@ -209,7 +209,7 @@ export default function TransparencyPage() {
                       setSearchQuery("");
                     }}
                     className={clsx(
-                      "w-full flex items-center justify-between p-6 rounded-3xl transition-all duration-300 group relative overflow-hidden",
+                      "w-full flex items-center justify-between p-6 rounded-2xl transition-all duration-300 group relative overflow-hidden",
                       selectedPairId === p.id
                         ? "bg-[#E2FF00] text-[#020617]"
                         : "bg-white/[0.03] border border-white/5 hover:border-white/20 text-white",
