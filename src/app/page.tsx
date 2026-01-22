@@ -112,7 +112,7 @@ export default function LandingPage() {
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E2FF00]/10 border border-[#E2FF00]/20 mb-12">
           <div className="w-1.5 h-1.5 rounded-full bg-[#E2FF00] animate-pulse"></div>
           <span className="text-[10px] font-black uppercase tracking-widest text-[#E2FF00]">
-            Waitlist open
+            System Live v1.0
           </span>
         </div>
         <h1 className="text-5xl md:text-8xl font-black text-white italic tracking-tighter leading-[0.9] mb-8 uppercase">
@@ -122,11 +122,27 @@ export default function LandingPage() {
         </h1>
         <p className="max-w-md mx-auto text-sm md:text-base text-white/40 font-medium leading-relaxed mb-12 px-4 uppercase tracking-wider">
           Convert high-risk meme coin volatility into low-risk, TON-denominated
-          yield. Basis trading for the TON ecosystem.
+          yield. Basis trading simplified for the TON ecosystem.
         </p>
 
         <div className="flex flex-col items-center justify-center gap-8">
-          <WaitlistForm />
+          <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+            <Link
+              href="/dashboard"
+              className="w-full md:w-auto bg-[#E2FF00] text-[#020617] px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_rgba(226,255,0,0.3)]"
+            >
+              Launch App
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="https://t.me/pamelofinance"
+              target="_blank"
+              className="w-full md:w-auto bg-white/5 border border-white/10 text-white px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              Join Community
+            </Link>
+          </div>
+          
           <div className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-white/5 border border-white/5">
             <ShieldCheck className="w-4 h-4 text-white/20" />
             <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">

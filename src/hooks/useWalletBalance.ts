@@ -10,7 +10,9 @@ export function useWalletBalance() {
     address ? `/api/wallet/balance?address=${address}` : null,
     fetcher,
     {
-      revalidateOnFocus: true
+      revalidateOnFocus: true,
+      errorRetryCount: 3,
+      errorRetryInterval: 2000
     }
   );
 

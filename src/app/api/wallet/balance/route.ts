@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { TonClient } from '@ton/ton';
+import { TonClient, Address } from '@ton/ton';
 import { API_CONFIG } from '@/lib/constants';
 
 // Initialize TON Client
@@ -17,9 +17,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const balance = await client.getBalance(address as any);
+    console.log('Fetching balance for address:', address);
+    const addressObj = Address.parse(address);
+    const balance = await client.getBalance(addressObj);
     // balance is in nanoton
     const balanceTon = Number(balance) / 1e9;
+    console.log('Balance fetched:', balanceTon);
     
     return NextResponse.json({ balance: balanceTon });
   } catch (error) {

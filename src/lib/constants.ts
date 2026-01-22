@@ -1,21 +1,17 @@
-// Network Configuration
-export const IS_TESTNET = process.env.NEXT_PUBLIC_IS_TESTNET === 'true';
-
 export const API_CONFIG = {
   stormTrade: {
-    baseUrl: IS_TESTNET ? 'https://api-testnet.storm.trade/api/v1' : 'https://api.storm.trade/api/v1',
-    rpcUrl: IS_TESTNET ? 'https://testnet.toncenter.com/api/v2/jsonRPC' : 'https://toncenter.com/api/v2/jsonRPC',
+    baseUrl: 'https://api.storm.trade/api/v1',
+    rpcUrl: 'https://toncenter.com/api/v2/jsonRPC',
   },
   swapCoffee: {
-    baseUrl: IS_TESTNET ? 'https://testnet.swap.coffee/api/v1' : 'https://api.swap.coffee/api/v1',
+    baseUrl: 'https://api.swap.coffee/api/v1',
   },
   ton: {
-    rpcUrl: process.env.TON_ENDPOINT || (IS_TESTNET ? 'https://testnet.toncenter.com/api/v2/jsonRPC' : 'https://toncenter.com/api/v2/jsonRPC'),
+    rpcUrl: process.env.TON_ENDPOINT || 'https://toncenter.com/api/v2/jsonRPC',
   },
   dedust: {
-    // Note: DeDust public API is primarily Mainnet. Using Mainnet data for Testnet display is common for prototypes.
-    // If a specific Testnet API becomes available, update the testnet URL here.
-    poolsUrl: IS_TESTNET ? 'https://api.dedust.io/v2/pools' : 'https://api.dedust.io/v2/pools',
+    // DeDust public API - mainnet only
+    poolsUrl: 'https://api.dedust.io/v2/pools',
   }
 };
 

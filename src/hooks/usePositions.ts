@@ -2,8 +2,9 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { Position } from '@/types/protocol';
 
-export function usePositions() {
-  const { data, error, mutate } = useSWR<{ positions: Position[] }>('/api/positions', fetcher, {
+export function usePositions(pairId?: string | null) {
+  const url = pairId ? `/api/positions?pairId=${pairId}` : '/api/positions';
+  const { data, error, mutate } = useSWR<{ positions: Position[] }>(url, fetcher, {
     revalidateOnFocus: false
   });
 
@@ -23,5 +24,6 @@ export function usePositions() {
     isLoading: !data && !error,
     isError: error,
     createPosition,
+    mutate
   };
 }

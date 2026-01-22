@@ -12,10 +12,16 @@ export async function GET(request: Request) {
 
     const searchParams = new URL(request.url).searchParams;
     const userId = searchParams.get('userId'); 
+    const pairId = searchParams.get('pairId');
+
+    const whereClause: any = { status: 'active' };
+    if (pairId) {
+      whereClause.pairId = pairId;
+    }
 
     // Fetch active positions
     const positions = await prisma.position.findMany({
-      where: { status: 'active' },
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: { user: true } 
     });

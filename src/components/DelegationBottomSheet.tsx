@@ -81,7 +81,7 @@ export default function DelegationBottomSheet({
   
       {/* Bottom Sheet */}
       <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center animate-in slide-in-from-bottom duration-300">
-        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto pb-28">
+        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto pb-6">
           {/* Handle Bar */}
           <div className="flex justify-center pt-3 pb-2 sticky top-0 bg-[#0B1221] z-10">
             <div className="w-12 h-1 bg-white/10 rounded-full" />
@@ -99,7 +99,7 @@ export default function DelegationBottomSheet({
                 </p>
               </div>
               <button
-                onClick={onClose}
+                onClick={onBack}
                 className="p-2 hover:bg-white/5 rounded-full"
               >
                 <X className="w-5 h-5 text-white/40" />

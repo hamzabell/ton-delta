@@ -241,10 +241,11 @@ export default function WhitepaperPage() {
       <footer className="mt-32 py-16 border-t border-white/5 text-center px-6 bg-black/20">
         <div className="max-w-3xl mx-auto flex flex-col items-center">
           <Link
-            href="/"
-            className="bg-[#E2FF00] text-[#020617] px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] transition-all mb-12 shadow-[0_20px_40px_rgba(226,255,0,0.1)]"
+            href="/dashboard"
+            className="bg-[#E2FF00] text-[#020617] px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] transition-all mb-12 shadow-[0_20px_40px_rgba(226,255,0,0.1)] flex items-center gap-2"
           >
-            Join the Waitlist
+            Launch App
+            <Zap className="w-4 h-4" />
           </Link>
           <div className="flex items-center justify-center gap-2 mb-8">
             <div className="text-xl">🍈</div>
