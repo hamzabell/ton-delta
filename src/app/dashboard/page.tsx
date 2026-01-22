@@ -4,12 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import { Zap, Shield, Flame, Info, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePairsInfinite } from '@/hooks/usePairs';
-import TradeBottomSheet from "@/components/TradeBottomSheet";
+import PairDetailsBottomSheet from "@/components/PairDetailsBottomSheet";
+import DelegationBottomSheet from "@/components/DelegationBottomSheet";
 
 export default function OpportunitiesPage() {
   const [sortBy, setSortBy] = useState<'tvl' | 'yield'>('tvl');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
+  const [showDelegationSheet, setShowDelegationSheet] = useState(false);
+  const [delegationPairId, setDelegationPairId] = useState<string | null>(null);
+  const [delegationAmount, setDelegationAmount] = useState<string>("");
 
   // Pull to Refresh Logic
   const [pullStartPoint, setPullStartPoint] = useState(0);
@@ -75,6 +79,25 @@ export default function OpportunitiesPage() {
     if (loaderRef.current) observer.observe(loaderRef.current);
     return () => observer.disconnect();
   }, [hasMore, loadMore, isLoadingMore]);
+
+  const handleEnterPosition = (amount: string) => {
+    setShowDelegationSheet(true);
+    setDelegationPairId(selectedPairId);
+    setDelegationAmount(amount);
+    setSelectedPairId(null);
+  }
+
+  const handleDelegationClose = () => {
+    setShowDelegationSheet(false);
+    setDelegationPairId(null);
+    setDelegationAmount("");
+  }
+
+  const handleDelegationBack = () => {
+    setShowDelegationSheet(false);
+    setSelectedPairId(delegationPairId);
+    setDelegationAmount("");
+  }
 
   return (
     <div 
@@ -250,11 +273,21 @@ export default function OpportunitiesPage() {
         </p>
       </div>
 
-      {/* Trade Bottom Sheet */}
-      <TradeBottomSheet
+      {/* Pair Details Bottom Sheet */}
+      <PairDetailsBottomSheet
         pairId={selectedPairId}
         isOpen={!!selectedPairId}
         onClose={() => setSelectedPairId(null)}
+        onEnterPosition={handleEnterPosition}
+      />
+
+      {/* Delegation Bottom Sheet */}
+      <DelegationBottomSheet
+        pairId={delegationPairId}
+        isOpen={showDelegationSheet}
+        onClose={handleDelegationClose}
+        onBack={handleDelegationBack}
+        amount={delegationAmount}
       />
     </div>
   );
