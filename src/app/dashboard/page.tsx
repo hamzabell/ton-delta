@@ -208,7 +208,7 @@ export default function OpportunitiesPage() {
                       {pair.category}
                     </span>
                     <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">
-                       TVL: <span className="text-white/60">{(pair.liquidity / 1000).toFixed(0)}k TON</span>
+                       TVL: <span className="text-white/60">{pair.liquidity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TON</span>
                     </span>
                   </div>
                 </div>

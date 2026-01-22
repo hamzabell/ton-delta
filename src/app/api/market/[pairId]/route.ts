@@ -44,7 +44,7 @@ export async function GET(
          }
      }
   } catch (e) {
-      console.warn("Market Data Fetch Failed, using simulation", e);
+      // Silently fall back to simulation if Storm Trade API is unavailable
   }
   
   await delay(200); 
