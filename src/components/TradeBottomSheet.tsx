@@ -125,26 +125,26 @@ export default function TradeBottomSheet({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       />
 
       {/* Bottom Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center animate-in slide-in-from-bottom duration-300">
-        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center animate-in slide-in-from-bottom duration-300">
+        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[75vh] overflow-y-auto pb-24">
           {/* Handle Bar */}
-          <div className="flex justify-center pt-3 pb-2">
+          <div className="flex justify-center pt-3 pb-2 sticky top-0 bg-[#0B1221] z-10">
             <div className="w-12 h-1 bg-white/10 rounded-full" />
           </div>
 
-          <div className="px-6 pb-8 space-y-6">
+          <div className="px-6 pb-6 space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-white tracking-tight italic uppercase">
+                <h1 className="text-lg font-bold text-white tracking-tight italic uppercase">
                   {pair.spotToken} / {pair.baseToken}
                 </h1>
-                <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest italic">
+                <p className="text-[9px] text-[#E2FF00] font-bold uppercase tracking-widest italic">
                   TON Native Yield
                 </p>
               </div>
@@ -152,34 +152,27 @@ export default function TradeBottomSheet({
                 onClick={onClose}
                 className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white transition-colors border border-white/5"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Yield Summary Card */}
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 flex justify-between items-center group overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                {pair.risk === "Low" ? (
-                  <Shield className="w-16 h-16" />
-                ) : (
-                  <Flame className="w-16 h-16" />
-                )}
-              </div>
+            {/* Yield Summary Card - Compact */}
+            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4 flex justify-between items-center">
               <div>
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-0.5">
                   Target Yield
                 </p>
-                <p className="text-4xl font-black text-white italic tracking-tighter">
+                <p className="text-2xl font-black text-white italic tracking-tighter">
                   {currentYield}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">
-                  Risk Profile
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-0.5">
+                  Risk
                 </p>
                 <p
                   className={clsx(
-                    "text-lg font-black uppercase italic",
+                    "text-sm font-black uppercase italic",
                     pair.risk === "Low" ? "text-emerald-500" : "text-amber-500",
                   )}
                 >
@@ -188,43 +181,36 @@ export default function TradeBottomSheet({
               </div>
             </div>
 
-            {/* Strategy Description */}
-            <div className="px-1">
-              <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider leading-relaxed">
-                Delta-neutral basis strategy for {pair.spotToken} on TON.
-              </p>
-            </div>
-
-            {/* Main Input Section */}
-            <div className="space-y-6">
-              <div className="text-center space-y-4 py-6">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+            {/* Main Input Section - Compact */}
+            <div className="space-y-4">
+              <div className="text-center space-y-3 py-4">
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
                   Delegation Amount (TON)
                 </p>
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-3xl font-light text-white/20">T</span>
+                  <span className="text-2xl font-light text-white/20">T</span>
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
-                    className="bg-transparent text-5xl font-black text-white text-center w-full focus:outline-none placeholder-white/5 italic"
+                    className="bg-transparent text-4xl font-black text-white text-center w-full focus:outline-none placeholder-white/5 italic"
                   />
                 </div>
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
-                  {isConnected ? `Wallet Balance: ${balance.toFixed(2)} TON` : "Connect Wallet to Trade"}
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                  {isConnected ? `Balance: ${balance.toFixed(2)} TON` : "Connect Wallet"}
                 </p>
               </div>
 
-              {/* Non-Custodial Strategy Details */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-3">
+              {/* Non-Custodial Strategy Details - Compact */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">
-                    Restricted Session
+                  <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider">
+                    Session
                   </span>
                   <span
                     className={clsx(
-                      "text-[10px] font-bold uppercase tracking-wider italic",
+                      "text-[9px] font-bold uppercase tracking-wider italic",
                       isSessionActive ? "text-[#E2FF00]" : "text-white/20",
                     )}
                   >
@@ -232,21 +218,21 @@ export default function TradeBottomSheet({
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">
-                    Account Standard
+                  <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider">
+                    Standard
                   </span>
-                  <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider italic">
-                    TON W5 AA
+                  <span className="text-[9px] font-bold text-white/60 uppercase tracking-wider italic">
+                    W5 AA
                   </span>
                 </div>
               </div>
 
-              {/* Action Button */}
+              {/* Action Button - Compact */}
               <button
                 onClick={handleExecute}
                 disabled={!amount || isConfirming || isDeploying}
                 className={clsx(
-                  "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                  "w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
                   isConfirming || !amount || isDeploying
                     ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/5"
                     : !isAAContractDeployed
@@ -277,30 +263,6 @@ export default function TradeBottomSheet({
                   </>
                 )}
               </button>
-            </div>
-
-            {/* Risk Information */}
-            <div className="space-y-4">
-              <div className="flex gap-4 items-start p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10">
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest">
-                    Risk Disclosure
-                  </p>
-                  <p className="text-[9px] text-amber-500/60 font-medium leading-relaxed">
-                    Meme coin basis strategies involve harvesting funding rates from speculators. Your max loss safeguard is critical for high-gain participation.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start px-2">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                  <Lock className="w-4 h-4 text-white/20" />
-                </div>
-                <p className="text-[9px] text-white/30 font-bold uppercase tracking-wider leading-relaxed">
-                  Platform only earns 20% performance fee on net profits. Principal is
-                  never subject to fees.
-                </p>
-              </div>
             </div>
           </div>
         </div>
