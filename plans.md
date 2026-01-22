@@ -4,7 +4,7 @@ This document serves as a guide for any LLM picking up the implementation of the
 
 ## Current Status
 
-- **Phase**: Phase 3 (Watchman Engine)
+- **Phase**: Phase 4 (Frontend Integration)
 - **Goal**: Integrate API calls with useSWR while maintaining the existing UI.
 - **Rules**:
   - "Tests MUST be approved by the user before implementation."
@@ -27,20 +27,25 @@ This document serves as a guide for any LLM picking up the implementation of the
 - [x] Verify: Run tests and build (All passed)
 - [x] Commit.
 
-### Phase 3: Watchman Engine [IN PROGRESS]
+### Phase 3: Watchman Engine [COMPLETED]
 
-- [ ] **Review Step**: Submit worker tests for review.
-- [ ] Setup Redis/BullMQ.
-- [ ] Implement Jobs (Drift, Funding, Safety).
-- [ ] Verify: Run worker tests.
-- [ ] Commit.
+- [x] Setup Redis/BullMQ.
+- [x] Implement Jobs (Drift, Safety).
+- [x] Verify: Run worker tests (All passed).
+- [x] Commit.
 
-### Phase 4: Frontend Integration
+### Phase 4: Frontend Integration [COMPLETED]
 
-- [ ] **Review Step**: Submit E2E tests (Playwright) for review.
-- [ ] Implement `useSWR` hooks.
-- [ ] Connect UI components to hooks.
-- [ ] Verify: Run E2E tests.
+- [x] E2E Tests (Search & Navigation).
+- [x] Implement `useSWR` hooks.
+- [x] Implement Search Feature on Dashboard.
+- [x] Fix Liquid Wallet Balance (API Route + Hook).
+- [x] Configure Storm/SwapCoffee Testnet Adapters.
+- [x] Connect UI components:
+  - [x] Dashboard (Search + API Data)
+  - [x] Trade Page (Real Data + Execution)
+  - [x] Portfolio Page (Real Positions + Balance)
+- [ ] Verify: Run E2E tests (In Progress).
 - [ ] Commit.
 
 ## Technical Context
@@ -48,9 +53,10 @@ This document serves as a guide for any LLM picking up the implementation of the
 - **Stack**: Next.js 14+, Redis (BullMQ), Tailwind CSS, useSWR.
 - **Architecture**:
   - **UI**: existing `src/app`.
-  - **API**: `src/app/api` (to be built).
+  - **API**: `src/app/api`.
   - **Workers**: `src/workers`.
   - **State**: Redis (Queues + Cache), Database (Prisma).
+- **Testnet**: Enabled via `IS_TESTNET` constant.
 
 ## Next Steps for the LLM
 

@@ -27,21 +27,46 @@ export type AggregatePosition = {
 }
 
 export type PositionAvgAggregateOutputType = {
-  principal: number | null
-  shares: number | null
+  spotAmount: number | null
+  perpAmount: number | null
+  spotValue: number | null
+  perpValue: number | null
+  totalEquity: number | null
+  principalFloor: number | null
+  entryPrice: number | null
+  currentPrice: number | null
+  fundingRate: number | null
+  driftCoefficient: number | null
 }
 
 export type PositionSumAggregateOutputType = {
-  principal: number | null
-  shares: number | null
+  spotAmount: number | null
+  perpAmount: number | null
+  spotValue: number | null
+  perpValue: number | null
+  totalEquity: number | null
+  principalFloor: number | null
+  entryPrice: number | null
+  currentPrice: number | null
+  fundingRate: number | null
+  driftCoefficient: number | null
 }
 
 export type PositionMinAggregateOutputType = {
   id: string | null
   userId: string | null
-  strategyId: string | null
-  principal: number | null
-  shares: number | null
+  pairId: string | null
+  spotAmount: number | null
+  perpAmount: number | null
+  spotValue: number | null
+  perpValue: number | null
+  totalEquity: number | null
+  principalFloor: number | null
+  entryPrice: number | null
+  currentPrice: number | null
+  fundingRate: number | null
+  driftCoefficient: number | null
+  status: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -49,9 +74,18 @@ export type PositionMinAggregateOutputType = {
 export type PositionMaxAggregateOutputType = {
   id: string | null
   userId: string | null
-  strategyId: string | null
-  principal: number | null
-  shares: number | null
+  pairId: string | null
+  spotAmount: number | null
+  perpAmount: number | null
+  spotValue: number | null
+  perpValue: number | null
+  totalEquity: number | null
+  principalFloor: number | null
+  entryPrice: number | null
+  currentPrice: number | null
+  fundingRate: number | null
+  driftCoefficient: number | null
+  status: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -59,9 +93,18 @@ export type PositionMaxAggregateOutputType = {
 export type PositionCountAggregateOutputType = {
   id: number
   userId: number
-  strategyId: number
-  principal: number
-  shares: number
+  pairId: number
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -69,21 +112,46 @@ export type PositionCountAggregateOutputType = {
 
 
 export type PositionAvgAggregateInputType = {
-  principal?: true
-  shares?: true
+  spotAmount?: true
+  perpAmount?: true
+  spotValue?: true
+  perpValue?: true
+  totalEquity?: true
+  principalFloor?: true
+  entryPrice?: true
+  currentPrice?: true
+  fundingRate?: true
+  driftCoefficient?: true
 }
 
 export type PositionSumAggregateInputType = {
-  principal?: true
-  shares?: true
+  spotAmount?: true
+  perpAmount?: true
+  spotValue?: true
+  perpValue?: true
+  totalEquity?: true
+  principalFloor?: true
+  entryPrice?: true
+  currentPrice?: true
+  fundingRate?: true
+  driftCoefficient?: true
 }
 
 export type PositionMinAggregateInputType = {
   id?: true
   userId?: true
-  strategyId?: true
-  principal?: true
-  shares?: true
+  pairId?: true
+  spotAmount?: true
+  perpAmount?: true
+  spotValue?: true
+  perpValue?: true
+  totalEquity?: true
+  principalFloor?: true
+  entryPrice?: true
+  currentPrice?: true
+  fundingRate?: true
+  driftCoefficient?: true
+  status?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -91,9 +159,18 @@ export type PositionMinAggregateInputType = {
 export type PositionMaxAggregateInputType = {
   id?: true
   userId?: true
-  strategyId?: true
-  principal?: true
-  shares?: true
+  pairId?: true
+  spotAmount?: true
+  perpAmount?: true
+  spotValue?: true
+  perpValue?: true
+  totalEquity?: true
+  principalFloor?: true
+  entryPrice?: true
+  currentPrice?: true
+  fundingRate?: true
+  driftCoefficient?: true
+  status?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -101,9 +178,18 @@ export type PositionMaxAggregateInputType = {
 export type PositionCountAggregateInputType = {
   id?: true
   userId?: true
-  strategyId?: true
-  principal?: true
-  shares?: true
+  pairId?: true
+  spotAmount?: true
+  perpAmount?: true
+  spotValue?: true
+  perpValue?: true
+  totalEquity?: true
+  principalFloor?: true
+  entryPrice?: true
+  currentPrice?: true
+  fundingRate?: true
+  driftCoefficient?: true
+  status?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -198,9 +284,18 @@ export type PositionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
 export type PositionGroupByOutputType = {
   id: string
   userId: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status: string
   createdAt: Date
   updatedAt: Date
   _count: PositionCountAggregateOutputType | null
@@ -231,9 +326,18 @@ export type PositionWhereInput = {
   NOT?: Prisma.PositionWhereInput | Prisma.PositionWhereInput[]
   id?: Prisma.StringFilter<"Position"> | string
   userId?: Prisma.StringFilter<"Position"> | string
-  strategyId?: Prisma.StringFilter<"Position"> | string
-  principal?: Prisma.FloatFilter<"Position"> | number
-  shares?: Prisma.FloatFilter<"Position"> | number
+  pairId?: Prisma.StringFilter<"Position"> | string
+  spotAmount?: Prisma.FloatFilter<"Position"> | number
+  perpAmount?: Prisma.FloatFilter<"Position"> | number
+  spotValue?: Prisma.FloatFilter<"Position"> | number
+  perpValue?: Prisma.FloatFilter<"Position"> | number
+  totalEquity?: Prisma.FloatFilter<"Position"> | number
+  principalFloor?: Prisma.FloatFilter<"Position"> | number
+  entryPrice?: Prisma.FloatFilter<"Position"> | number
+  currentPrice?: Prisma.FloatFilter<"Position"> | number
+  fundingRate?: Prisma.FloatFilter<"Position"> | number
+  driftCoefficient?: Prisma.FloatFilter<"Position"> | number
+  status?: Prisma.StringFilter<"Position"> | string
   createdAt?: Prisma.DateTimeFilter<"Position"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Position"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -242,9 +346,18 @@ export type PositionWhereInput = {
 export type PositionOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  strategyId?: Prisma.SortOrder
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  pairId?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -256,9 +369,18 @@ export type PositionWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.PositionWhereInput[]
   NOT?: Prisma.PositionWhereInput | Prisma.PositionWhereInput[]
   userId?: Prisma.StringFilter<"Position"> | string
-  strategyId?: Prisma.StringFilter<"Position"> | string
-  principal?: Prisma.FloatFilter<"Position"> | number
-  shares?: Prisma.FloatFilter<"Position"> | number
+  pairId?: Prisma.StringFilter<"Position"> | string
+  spotAmount?: Prisma.FloatFilter<"Position"> | number
+  perpAmount?: Prisma.FloatFilter<"Position"> | number
+  spotValue?: Prisma.FloatFilter<"Position"> | number
+  perpValue?: Prisma.FloatFilter<"Position"> | number
+  totalEquity?: Prisma.FloatFilter<"Position"> | number
+  principalFloor?: Prisma.FloatFilter<"Position"> | number
+  entryPrice?: Prisma.FloatFilter<"Position"> | number
+  currentPrice?: Prisma.FloatFilter<"Position"> | number
+  fundingRate?: Prisma.FloatFilter<"Position"> | number
+  driftCoefficient?: Prisma.FloatFilter<"Position"> | number
+  status?: Prisma.StringFilter<"Position"> | string
   createdAt?: Prisma.DateTimeFilter<"Position"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Position"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -267,9 +389,18 @@ export type PositionWhereUniqueInput = Prisma.AtLeast<{
 export type PositionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  strategyId?: Prisma.SortOrder
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  pairId?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.PositionCountOrderByAggregateInput
@@ -285,18 +416,36 @@ export type PositionScalarWhereWithAggregatesInput = {
   NOT?: Prisma.PositionScalarWhereWithAggregatesInput | Prisma.PositionScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Position"> | string
   userId?: Prisma.StringWithAggregatesFilter<"Position"> | string
-  strategyId?: Prisma.StringWithAggregatesFilter<"Position"> | string
-  principal?: Prisma.FloatWithAggregatesFilter<"Position"> | number
-  shares?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  pairId?: Prisma.StringWithAggregatesFilter<"Position"> | string
+  spotAmount?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  perpAmount?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  spotValue?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  perpValue?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  totalEquity?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  principalFloor?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  entryPrice?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  currentPrice?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  fundingRate?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  driftCoefficient?: Prisma.FloatWithAggregatesFilter<"Position"> | number
+  status?: Prisma.StringWithAggregatesFilter<"Position"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Position"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Position"> | Date | string
 }
 
 export type PositionCreateInput = {
   id?: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPositionsInput
@@ -305,18 +454,36 @@ export type PositionCreateInput = {
 export type PositionUncheckedCreateInput = {
   id?: string
   userId: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type PositionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPositionsNestedInput
@@ -325,9 +492,18 @@ export type PositionUpdateInput = {
 export type PositionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -335,18 +511,36 @@ export type PositionUncheckedUpdateInput = {
 export type PositionCreateManyInput = {
   id?: string
   userId: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type PositionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -354,9 +548,18 @@ export type PositionUpdateManyMutationInput = {
 export type PositionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -374,24 +577,50 @@ export type PositionOrderByRelationAggregateInput = {
 export type PositionCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  strategyId?: Prisma.SortOrder
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  pairId?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type PositionAvgOrderByAggregateInput = {
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
 }
 
 export type PositionMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  strategyId?: Prisma.SortOrder
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  pairId?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -399,16 +628,33 @@ export type PositionMaxOrderByAggregateInput = {
 export type PositionMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  strategyId?: Prisma.SortOrder
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  pairId?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type PositionSumOrderByAggregateInput = {
-  principal?: Prisma.SortOrder
-  shares?: Prisma.SortOrder
+  spotAmount?: Prisma.SortOrder
+  perpAmount?: Prisma.SortOrder
+  spotValue?: Prisma.SortOrder
+  perpValue?: Prisma.SortOrder
+  totalEquity?: Prisma.SortOrder
+  principalFloor?: Prisma.SortOrder
+  entryPrice?: Prisma.SortOrder
+  currentPrice?: Prisma.SortOrder
+  fundingRate?: Prisma.SortOrder
+  driftCoefficient?: Prisma.SortOrder
 }
 
 export type PositionCreateNestedManyWithoutUserInput = {
@@ -455,18 +701,36 @@ export type PositionUncheckedUpdateManyWithoutUserNestedInput = {
 
 export type PositionCreateWithoutUserInput = {
   id?: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type PositionUncheckedCreateWithoutUserInput = {
   id?: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -503,45 +767,90 @@ export type PositionScalarWhereInput = {
   NOT?: Prisma.PositionScalarWhereInput | Prisma.PositionScalarWhereInput[]
   id?: Prisma.StringFilter<"Position"> | string
   userId?: Prisma.StringFilter<"Position"> | string
-  strategyId?: Prisma.StringFilter<"Position"> | string
-  principal?: Prisma.FloatFilter<"Position"> | number
-  shares?: Prisma.FloatFilter<"Position"> | number
+  pairId?: Prisma.StringFilter<"Position"> | string
+  spotAmount?: Prisma.FloatFilter<"Position"> | number
+  perpAmount?: Prisma.FloatFilter<"Position"> | number
+  spotValue?: Prisma.FloatFilter<"Position"> | number
+  perpValue?: Prisma.FloatFilter<"Position"> | number
+  totalEquity?: Prisma.FloatFilter<"Position"> | number
+  principalFloor?: Prisma.FloatFilter<"Position"> | number
+  entryPrice?: Prisma.FloatFilter<"Position"> | number
+  currentPrice?: Prisma.FloatFilter<"Position"> | number
+  fundingRate?: Prisma.FloatFilter<"Position"> | number
+  driftCoefficient?: Prisma.FloatFilter<"Position"> | number
+  status?: Prisma.StringFilter<"Position"> | string
   createdAt?: Prisma.DateTimeFilter<"Position"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Position"> | Date | string
 }
 
 export type PositionCreateManyUserInput = {
   id?: string
-  strategyId: string
-  principal: number
-  shares: number
+  pairId: string
+  spotAmount: number
+  perpAmount: number
+  spotValue: number
+  perpValue: number
+  totalEquity: number
+  principalFloor: number
+  entryPrice: number
+  currentPrice: number
+  fundingRate: number
+  driftCoefficient: number
+  status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type PositionUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type PositionUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type PositionUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  strategyId?: Prisma.StringFieldUpdateOperationsInput | string
-  principal?: Prisma.FloatFieldUpdateOperationsInput | number
-  shares?: Prisma.FloatFieldUpdateOperationsInput | number
+  pairId?: Prisma.StringFieldUpdateOperationsInput | string
+  spotAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  spotValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  perpValue?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalEquity?: Prisma.FloatFieldUpdateOperationsInput | number
+  principalFloor?: Prisma.FloatFieldUpdateOperationsInput | number
+  entryPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  currentPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  fundingRate?: Prisma.FloatFieldUpdateOperationsInput | number
+  driftCoefficient?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -551,9 +860,18 @@ export type PositionUncheckedUpdateManyWithoutUserInput = {
 export type PositionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   userId?: boolean
-  strategyId?: boolean
-  principal?: boolean
-  shares?: boolean
+  pairId?: boolean
+  spotAmount?: boolean
+  perpAmount?: boolean
+  spotValue?: boolean
+  perpValue?: boolean
+  totalEquity?: boolean
+  principalFloor?: boolean
+  entryPrice?: boolean
+  currentPrice?: boolean
+  fundingRate?: boolean
+  driftCoefficient?: boolean
+  status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -562,9 +880,18 @@ export type PositionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
 export type PositionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   userId?: boolean
-  strategyId?: boolean
-  principal?: boolean
-  shares?: boolean
+  pairId?: boolean
+  spotAmount?: boolean
+  perpAmount?: boolean
+  spotValue?: boolean
+  perpValue?: boolean
+  totalEquity?: boolean
+  principalFloor?: boolean
+  entryPrice?: boolean
+  currentPrice?: boolean
+  fundingRate?: boolean
+  driftCoefficient?: boolean
+  status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -573,9 +900,18 @@ export type PositionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type PositionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   userId?: boolean
-  strategyId?: boolean
-  principal?: boolean
-  shares?: boolean
+  pairId?: boolean
+  spotAmount?: boolean
+  perpAmount?: boolean
+  spotValue?: boolean
+  perpValue?: boolean
+  totalEquity?: boolean
+  principalFloor?: boolean
+  entryPrice?: boolean
+  currentPrice?: boolean
+  fundingRate?: boolean
+  driftCoefficient?: boolean
+  status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -584,14 +920,23 @@ export type PositionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type PositionSelectScalar = {
   id?: boolean
   userId?: boolean
-  strategyId?: boolean
-  principal?: boolean
-  shares?: boolean
+  pairId?: boolean
+  spotAmount?: boolean
+  perpAmount?: boolean
+  spotValue?: boolean
+  perpValue?: boolean
+  totalEquity?: boolean
+  principalFloor?: boolean
+  entryPrice?: boolean
+  currentPrice?: boolean
+  fundingRate?: boolean
+  driftCoefficient?: boolean
+  status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "strategyId" | "principal" | "shares" | "createdAt" | "updatedAt", ExtArgs["result"]["position"]>
+export type PositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "pairId" | "spotAmount" | "perpAmount" | "spotValue" | "perpValue" | "totalEquity" | "principalFloor" | "entryPrice" | "currentPrice" | "fundingRate" | "driftCoefficient" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["position"]>
 export type PositionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -610,9 +955,18 @@ export type $PositionPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     userId: string
-    strategyId: string
-    principal: number
-    shares: number
+    pairId: string
+    spotAmount: number
+    perpAmount: number
+    spotValue: number
+    perpValue: number
+    totalEquity: number
+    principalFloor: number
+    entryPrice: number
+    currentPrice: number
+    fundingRate: number
+    driftCoefficient: number
+    status: string
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["position"]>
@@ -1041,9 +1395,18 @@ export interface Prisma__PositionClient<T, Null = never, ExtArgs extends runtime
 export interface PositionFieldRefs {
   readonly id: Prisma.FieldRef<"Position", 'String'>
   readonly userId: Prisma.FieldRef<"Position", 'String'>
-  readonly strategyId: Prisma.FieldRef<"Position", 'String'>
-  readonly principal: Prisma.FieldRef<"Position", 'Float'>
-  readonly shares: Prisma.FieldRef<"Position", 'Float'>
+  readonly pairId: Prisma.FieldRef<"Position", 'String'>
+  readonly spotAmount: Prisma.FieldRef<"Position", 'Float'>
+  readonly perpAmount: Prisma.FieldRef<"Position", 'Float'>
+  readonly spotValue: Prisma.FieldRef<"Position", 'Float'>
+  readonly perpValue: Prisma.FieldRef<"Position", 'Float'>
+  readonly totalEquity: Prisma.FieldRef<"Position", 'Float'>
+  readonly principalFloor: Prisma.FieldRef<"Position", 'Float'>
+  readonly entryPrice: Prisma.FieldRef<"Position", 'Float'>
+  readonly currentPrice: Prisma.FieldRef<"Position", 'Float'>
+  readonly fundingRate: Prisma.FieldRef<"Position", 'Float'>
+  readonly driftCoefficient: Prisma.FieldRef<"Position", 'Float'>
+  readonly status: Prisma.FieldRef<"Position", 'String'>
   readonly createdAt: Prisma.FieldRef<"Position", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Position", 'DateTime'>
 }

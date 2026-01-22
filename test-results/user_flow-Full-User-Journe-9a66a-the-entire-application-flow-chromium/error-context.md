@@ -1,0 +1,80 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: 🍈
+        - generic [ref=e7]: pamelo.finance
+      - button "Connect Wallet" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e15]: Connect Wallet
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - paragraph [ref=e21]: W5 Account Active
+          - paragraph [ref=e22]: Restricted Session Live
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - heading "REFINER" [level=1] [ref=e25]
+            - paragraph [ref=e26]: Institutional Meme Alpha
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic:
+                - img
+              - textbox "Search assets (e.g. DOGS, NOT)..." [ref=e30]: DOGS
+            - generic [ref=e31]:
+              - generic [ref=e32]:
+                - button "Sort by TVL" [ref=e33]
+                - button "Sort by Yield" [ref=e34]
+              - button [ref=e37]:
+                - img [ref=e38]
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: Network TVL
+              - paragraph [ref=e43]: $14.2M
+            - generic [ref=e44]:
+              - paragraph [ref=e45]: Model
+              - paragraph [ref=e46]: TON Native
+        - 'link "🐶 DOGS / TON Meme TVL: NaNk TON Target Yield 242.3%" [active] [ref=e49] [cursor=pointer]':
+          - /url: /dashboard/trade/dogs-ton
+          - generic [ref=e50]:
+            - generic [ref=e51]: 🐶
+            - generic [ref=e52]:
+              - heading "DOGS / TON" [level=3] [ref=e53]
+              - generic [ref=e54]:
+                - generic [ref=e55]: Meme
+                - generic [ref=e56]:
+                  - text: "TVL:"
+                  - generic [ref=e57]: NaNk TON
+          - generic [ref=e58]:
+            - paragraph [ref=e59]: Target Yield
+            - paragraph [ref=e60]: 242.3%
+        - paragraph [ref=e63]: Pamelo Alpha Catalog
+    - navigation [ref=e64]:
+      - generic [ref=e65]:
+        - link "Yields" [ref=e66] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e67]:
+            - img [ref=e68]
+            - generic [ref=e73]: Yields
+        - link "Portfolio" [ref=e74] [cursor=pointer]:
+          - /url: /dashboard/portfolio
+          - generic [ref=e75]:
+            - img [ref=e76]
+            - generic [ref=e79]: Portfolio
+        - link "Settings" [ref=e80] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: Settings
+  - button "Open Next.js Dev Tools" [ref=e91] [cursor=pointer]:
+    - generic [ref=e94]:
+      - text: Rendering
+      - generic [ref=e95]:
+        - generic [ref=e96]: .
+        - generic [ref=e97]: .
+        - generic [ref=e98]: .
+  - alert [ref=e99]
+```

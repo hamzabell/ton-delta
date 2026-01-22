@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Wallet, Shield } from "lucide-react";
+import { LayoutDashboard, Wallet, Shield, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TonConnectButton } from "@tonconnect/ui-react";
 
@@ -16,7 +16,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: "Yields", href: "/dashboard", icon: LayoutDashboard },
     { name: "Portfolio", href: "/dashboard/portfolio", icon: Wallet },
-    { name: "Audit", href: "/dashboard/transparency", icon: Shield },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   return (

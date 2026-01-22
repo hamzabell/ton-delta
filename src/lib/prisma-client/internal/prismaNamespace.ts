@@ -951,9 +951,18 @@ export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeo
 export const PositionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
-  strategyId: 'strategyId',
-  principal: 'principal',
-  shares: 'shares',
+  pairId: 'pairId',
+  spotAmount: 'spotAmount',
+  perpAmount: 'perpAmount',
+  spotValue: 'spotValue',
+  perpValue: 'perpValue',
+  totalEquity: 'totalEquity',
+  principalFloor: 'principalFloor',
+  entryPrice: 'entryPrice',
+  currentPrice: 'currentPrice',
+  fundingRate: 'fundingRate',
+  driftCoefficient: 'driftCoefficient',
+  status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

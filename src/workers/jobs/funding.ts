@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import ccxt from 'ccxt';
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 
 // Mock Exchange for MVP to avoid needing real API keys immediately
 const mockExchange = {

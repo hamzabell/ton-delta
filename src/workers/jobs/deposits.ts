@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 
 interface DepositPayload {
   userId: string;
@@ -10,6 +10,7 @@ interface DepositPayload {
 
 export const processDepositJob = async (job: Job) => {
   const { userId, strategyId, amount, txHash } = job.data as DepositPayload;
+  const pairId = strategyId; // Map strategy to pair
 
   console.log(`[Deposit] Processing deposit of $${amount} for User ${userId}`);
 
@@ -26,24 +27,32 @@ export const processDepositJob = async (job: Job) => {
       // 2. Update Position (or Create)
       // Check if position exists
       const existingPosition = await prisma.position.findFirst({
-          where: { userId, strategyId }
+          where: { userId, pairId }
       });
 
       if (existingPosition) {
           await prisma.position.update({
               where: { id: existingPosition.id },
               data: {
-                  principal: { increment: amount },
-                  shares: { increment: amount }, // 1:1 shares for MVP
+                  totalEquity: { increment: amount },
+                  principalFloor: { increment: amount }, // Assuming full amount adds to floor
               }
           });
       } else {
           await prisma.position.create({
               data: {
                   userId,
-                  strategyId,
-                  principal: amount,
-                  shares: amount,
+                  pairId,
+                  totalEquity: amount,
+                  principalFloor: amount,
+                  spotAmount: 0,
+                  perpAmount: 0,
+                  spotValue: 0,
+                  perpValue: 0,
+                  entryPrice: 1,
+                  currentPrice: 1,
+                  fundingRate: 0,
+                  driftCoefficient: 0
               }
           });
       }

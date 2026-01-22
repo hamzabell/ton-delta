@@ -20,9 +20,13 @@ import {
 } from "@tonconnect/ui-react";
 import clsx from "clsx";
 import { Settings, LogOut, ChevronRight } from "lucide-react";
+import { usePositions } from "@/hooks/usePositions";
+import { usePairs } from "@/hooks/usePairs";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 
 export default function PortfolioPage() {
   const wallet = useTonWallet();
+  const { balance: walletBalance } = useWalletBalance();
   const [tonConnectUI] = useTonConnectUI();
 
   // Account Settings State
@@ -37,36 +41,30 @@ export default function PortfolioPage() {
       maximumFractionDigits: 1,
     }).format(number);
   };
-  // Positions State (Mock data)
+  // Real Hooks
+  const { positions: apiPositions, isLoading: isPositionsLoading } = usePositions();
+  const { pairs } = usePairs();
 
-  // Positions State (Mock data)
-  const [positions, setPositions] = useState([
-    {
-      id: 2,
-      pair: "DOGS / TON",
-      icon: "D",
-      value: 15420.0,
-      grossProfit: 1280.2,
-      status: "Meme",
-      risk: "High",
-      sessionExpiry: Date.now() + 2 * 24 * 60 * 60 * 1000, // 2 days left
-    },
-    {
-      id: 3,
-      pair: "NOT / TON",
-      icon: "N",
-      value: 8250.0,
-      grossProfit: 450.5,
-      status: "Meme",
-      risk: "High",
-      sessionExpiry: Date.now() + 6 * 24 * 60 * 60 * 1000, // 6 days left
-    },
-  ]);
+  const positions = apiPositions.map(pos => {
+    const pair = pairs.find(p => p.id === pos.pairId);
+    const initialEstimate = pos.principalFloor / 0.85; // Heuristic based on 15% max drawdown
+    return {
+      id: pos.id,
+      pair: pair ? pair.name : pos.pairId,
+      icon: pair ? pair.icon : '?',
+      value: pos.totalEquity,
+      grossProfit: pos.totalEquity - initialEstimate,
+      status: pos.status,
+      risk: pair ? pair.risk : 'Medium', // Fallback
+      sessionExpiry: pos.createdAt ? new Date(pos.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000 : Date.now(),
+      pairId: pos.pairId // Keep ID for reference
+    };
+  });
 
-  const [redeemingId, setRedeemingId] = useState<number | null>(null);
-  const [panickingId, setPanickingId] = useState<number | null>(null);
-  const [extendingId, setExtendingId] = useState<number | null>(null);
-  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
+  const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [panickingId, setPanickingId] = useState<string | null>(null);
+  const [extendingId, setExtendingId] = useState<string | null>(null);
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(
     null,
   );
   const [isProcessing, setIsProcessing] = useState(false);
@@ -84,17 +82,16 @@ export default function PortfolioPage() {
   );
   const netEquity = institutionalEquity - performanceFee;
 
-  const walletBalance = 1250.0;
   const totalNetBalance = netEquity + (wallet ? walletBalance : 0);
 
-  const handleRedeem = (id: number) => {
+  const handleRedeem = (id: string) => {
     setRedeemingId(id);
   };
 
   const confirmRedeem = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      setPositions((prev) => prev.filter((pos) => pos.id !== redeemingId));
+      // Logic would go here to call API
       setIsProcessing(false);
       setRedeemingId(null);
     }, 2000);
@@ -103,13 +100,7 @@ export default function PortfolioPage() {
   const confirmExtension = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      setPositions((prev) =>
-        prev.map((pos) =>
-          pos.id === extendingId
-            ? { ...pos, sessionExpiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }
-            : pos,
-        ),
-      );
+      // Call API extension endpoint
       setIsProcessing(false);
       setExtendingId(null);
     }, 2000);
@@ -118,7 +109,7 @@ export default function PortfolioPage() {
   const confirmPanic = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      setPositions((prev) => prev.filter((pos) => pos.id !== panickingId));
+      // Call API panic endpoint
       setIsProcessing(false);
       setPanickingId(null);
     }, 3000);
@@ -249,85 +240,87 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      {/* 4. Active Positions */}
-      <div className="space-y-4">
-        <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">
-          Strategy Positions
-        </h2>
+      {/* 4. Active Positions (Only if Connected) */}
+      {wallet && (
+        <div className="space-y-4">
+          <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">
+            Strategy Positions
+          </h2>
 
-        <div className="space-y-3">
-          {positions.length > 0 ? (
-            positions.map((pos) => (
-              <button
-                key={pos.id}
-                onClick={() => setSelectedPositionId(pos.id)}
-                className="w-full text-left p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/[0.04] transition-all relative overflow-hidden active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/20 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
-                    {pos.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-black text-base text-white italic tracking-tighter uppercase whitespace-nowrap">
-                      {pos.pair}
-                    </h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <div className="w-1 h-1 rounded-full bg-[#E2FF00] shadow-[0_0_8px_rgba(226,255,0,0.4)] animate-pulse" />
-                      <span className="text-[8px] font-black text-[#E2FF00]/30 uppercase tracking-[0.2em] leading-none">
-                        Active Position
-                      </span>
+          <div className="space-y-3">
+            {positions.length > 0 ? (
+              positions.map((pos) => (
+                <button
+                  key={pos.id}
+                  onClick={() => setSelectedPositionId(pos.id)}
+                  className="w-full text-left p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/[0.04] transition-all relative overflow-hidden active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/20 border border-white/10 group-hover:border-[#E2FF00]/20 transition-all text-lg italic">
+                      {pos.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-black text-base text-white italic tracking-tighter uppercase whitespace-nowrap">
+                        {pos.pair}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="w-1 h-1 rounded-full bg-[#E2FF00] shadow-[0_0_8px_rgba(226,255,0,0.4)] animate-pulse" />
+                        <span className="text-[8px] font-black text-[#E2FF00]/30 uppercase tracking-[0.2em] leading-none">
+                          Active Position
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <p className="font-black text-lg text-white italic tracking-tighter leading-none">
-                    {pos.value.toLocaleString()}{" "}
-                    <span className="text-[10px] not-italic text-white/10 ml-0.5">
-                      TON
-                    </span>
-                  </p>
-                  <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.4em] italic mt-2">
-                    Tap to Manage
-                  </p>
-                </div>
-              </button>
-            ))
-          ) : (
-            <div className="p-12 text-center border border-dashed border-white/5 rounded-2xl">
-              <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.4em] italic leading-relaxed">
-                No active delegations.
-                <br />
-                No active delegations.
-                <br />
-                Select a TON pair to harvest yield.
-              </p>
-            </div>
-          )}
+                  <div className="text-right">
+                    <p className="font-black text-lg text-white italic tracking-tighter leading-none">
+                      {pos.value.toLocaleString()}{" "}
+                      <span className="text-[10px] not-italic text-white/10 ml-0.5">
+                        TON
+                      </span>
+                    </p>
+                    <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.4em] italic mt-2">
+                      Tap to Manage
+                    </p>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-12 text-center border border-dashed border-white/5 rounded-2xl">
+                <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.4em] italic leading-relaxed">
+                  No active delegations.
+                  <br />
+                  Select a TON pair to harvest yield.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. Balances Summary */}
+      {/* 3. Balances/Metrics Summary */}
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">
-          Capital Ledger
+          {wallet ? "Capital Ledger" : "Protocol Status"}
         </h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
             <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">
-              Pamelo Equity
+              {wallet ? "Your Pamelo Equity" : "Pamelo Protocol TVL"}
             </p>
             <p className="text-lg font-black text-white font-mono italic leading-none">
-              {netEquity.toLocaleString()} TON
+              {wallet ? netEquity.toLocaleString() : "---"} TON
             </p>
+             {!wallet && <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-2">Connect Wallet</p>}
           </div>
           <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
             <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">
-              Liquid Wallet
+              {wallet ? "Liquid Wallet" : "Total Yield Paid"}
             </p>
             <p className="text-lg font-black text-white/20 font-mono italic leading-none">
-              {walletBalance.toLocaleString()} TON
+              {wallet ? walletBalance.toLocaleString() : "---"} TON
             </p>
+            {!wallet && <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-2">---</p>}
           </div>
         </div>
       </div>

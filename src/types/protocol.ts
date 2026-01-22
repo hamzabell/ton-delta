@@ -20,7 +20,7 @@ export interface TradingPair {
   name: string;
   spotToken: string;
   baseToken: string;
-  currentAPR: number;
+  apr: number;
   fundingRate: number;
   volume24h: number;
   liquidity: number;

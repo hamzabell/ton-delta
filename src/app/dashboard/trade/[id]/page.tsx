@@ -14,42 +14,25 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTonWallet } from "@tonconnect/ui-react";
 import clsx from "clsx";
+import { usePair } from "@/hooks/usePairs";
+import { useMarketData } from "@/hooks/useMarketData";
+import { usePositions } from "@/hooks/usePositions";
 
 import { Zap, Shield, Flame, Info, AlertTriangle } from "lucide-react";
 
-const PAIR_DATA: Record<string, any> = {
-  "dogs-ton": {
-    base: "DOGS",
-    quote: "TON",
-    yield: "242.3%",
-    risk: "High",
-    category: "Meme",
-    desc: "Delta-neutral basis strategy: 490/510 split between $DOGS Spot and 1x Short on Storm Trade.",
-  },
-  "not-ton": {
-    base: "NOT",
-    quote: "TON",
-    yield: "185.8%",
-    risk: "High",
-    category: "Meme",
-    desc: "Harvesting funding rates on Notcoin with automated n8n rebalancing for delta neutrality.",
-  },
-  "redo-ton": {
-    base: "REDO",
-    quote: "TON",
-    yield: "285.0%",
-    risk: "High",
-    category: "Meme",
-    desc: "Institutional-grade refinancing of Resistance Dog (REDO) volatility with 1:1 hedged ratio.",
-  },
-};
+
+
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 
 export default function TradePage() {
   const params = useParams();
   const pairId = (params.id as string) || "dogs-ton";
-  const data = PAIR_DATA[pairId] || PAIR_DATA["dogs-ton"];
-
-  if (!data) return null; // Safety check
+  const { balance, isConnected } = useWalletBalance();
+  
+  // Real Data Hooks
+  const { pair, isLoading: isPairLoading } = usePair(pairId);
+  const { data: marketData } = useMarketData(pairId);
+  const { createPosition } = usePositions();
 
   const [amount, setAmount] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
@@ -78,7 +61,7 @@ export default function TradePage() {
     }, 2000);
   };
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
     if (!amount) return;
     const stakeAmount = parseFloat(amount);
     const lossLimit = parseFloat(maxLoss);
@@ -99,12 +82,27 @@ export default function TradePage() {
     }
 
     setIsConfirming(true);
-    setTimeout(() => {
-      setIsConfirming(false);
+    
+    try {
+      // Execute Real Position Creation via API
+      await createPosition(pairId, stakeAmount);
+      
       setAmount("");
       alert(`Strategy Deployed via Pamelo W5 Account Successfully`);
-    }, 1500);
+    } catch (err) {
+      alert("Failed to deploy strategy: " + err);
+    } finally {
+      setIsConfirming(false);
+    }
   };
+
+  if (isPairLoading || !pair) return <div className="p-8 text-white/20">Loading...</div>;
+
+  // Use real data if available, fallback to pair static data
+  // Use pair.apr (DeDust derived) for consistency with Dashboard list
+  // marketData.fundingRate is often simulated or volatile perp funding, whereas pair.apr is 24h avg
+  const currentYield = `${pair.apr}%`;
+
 
   return (
     <div className="space-y-8 pb-24">
@@ -118,7 +116,7 @@ export default function TradePage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-white tracking-tight italic uppercase">
-            {data.base} / {data.quote}
+            {pair.spotToken} / {pair.baseToken}
           </h1>
           <p className="text-[10px] text-[#E2FF00] font-bold uppercase tracking-widest italic">
             TON Native Yield
@@ -129,7 +127,7 @@ export default function TradePage() {
       {/* Yield Summary Card */}
       <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 flex justify-between items-center group overflow-hidden relative">
         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-          {data.risk === "Low" ? (
+          {pair.risk === "Low" ? (
             <Shield className="w-16 h-16" />
           ) : (
             <Flame className="w-16 h-16" />
@@ -140,7 +138,7 @@ export default function TradePage() {
             Target Yield
           </p>
           <p className="text-4xl font-black text-white italic tracking-tighter">
-            {data.yield}
+            {currentYield}
           </p>
         </div>
         <div className="text-right">
@@ -150,10 +148,10 @@ export default function TradePage() {
           <p
             className={clsx(
               "text-lg font-black uppercase italic",
-              data.risk === "Low" ? "text-emerald-500" : "text-amber-500",
+              pair.risk === "Low" ? "text-emerald-500" : "text-amber-500",
             )}
           >
-            {data.risk}
+            {pair.risk}
           </p>
         </div>
       </div>
@@ -161,7 +159,7 @@ export default function TradePage() {
       {/* Strategy Description */}
       <div className="px-1">
         <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider leading-relaxed">
-          {data.desc}
+          Delta-neutral basis strategy for {pair.spotToken} on TON.
         </p>
       </div>
 
@@ -181,8 +179,9 @@ export default function TradePage() {
               className="bg-transparent text-5xl font-black text-white text-center w-full focus:outline-none placeholder-white/5 italic"
             />
           </div>
+          {/* Real Wallet Balance Display */}
           <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
-            Pamelo Account: 1,250.00 TON
+             {isConnected ? `Wallet Balance: ${balance.toFixed(2)} TON` : "Connect Wallet to Trade"} 
           </p>
         </div>
 

@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import { getSpotPrice$, buildSwapTransaction$ } from '../../lib/swapcoffee';
 import { getMarkPrice$ } from '../../lib/storm';
 import { sendTransactions$, getKeeperWallet$ } from '../../lib/custodialWallet';
