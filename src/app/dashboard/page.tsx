@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Zap, Shield, Flame, Info, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { usePairsInfinite } from '@/hooks/usePairs';
+import TradeBottomSheet from "@/components/TradeBottomSheet";
 
 export default function OpportunitiesPage() {
   const [sortBy, setSortBy] = useState<'tvl' | 'yield'>('tvl');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
 
   // Pull to Refresh Logic
   const [pullStartPoint, setPullStartPoint] = useState(0);
@@ -186,10 +187,10 @@ export default function OpportunitiesPage() {
         ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredPairs.map((pair) => (
-            <Link
+            <button
               key={pair.id}
-              href={`/dashboard/trade/${pair.id}`}
-              className="group p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.05] transition-all"
+              onClick={() => setSelectedPairId(pair.id)}
+              className="group p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.05] transition-all text-left w-full"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 font-bold text-base">
@@ -229,7 +230,7 @@ export default function OpportunitiesPage() {
                   {pair.apr}%
                 </p>
               </div>
-            </Link>
+            </button>
           ))}
           
            {/* Load More Trigger */}
@@ -248,6 +249,13 @@ export default function OpportunitiesPage() {
           Pamelo Alpha Catalog
         </p>
       </div>
+
+      {/* Trade Bottom Sheet */}
+      <TradeBottomSheet
+        pairId={selectedPairId}
+        isOpen={!!selectedPairId}
+        onClose={() => setSelectedPairId(null)}
+      />
     </div>
   );
 }
