@@ -109,29 +109,33 @@ export default function TradeBottomSheet({
   };
 
   if (!isOpen || !pairId) return null;
-  if (isPairLoading || !pair) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl p-8">
-          <div className="text-white/20">Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  
+  // Show loading indicator  if (!isOpen || !pairId) return null;
 
-  const currentYield = `${pair.apr}%`;
+  const currentYield = pair ? `${pair.apr}%` : "";
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - Always show immediately when open */}
       <div
-        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
+  
+      {/* Loading indicator at bottom while fetching */}
+      {(isPairLoading || !pair) && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom duration-300">
+          <div className="bg-[#0B1221] border border-white/10 rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-white/10 border-t-[#E2FF00] rounded-full animate-spin" />
+            <span className="text-white/60 text-sm font-bold uppercase tracking-wider">Loading...</span>
+          </div>
+        </div>
+      )}
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet - Only show when data loaded */}
+      {!isPairLoading && pair && (
       <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center animate-in slide-in-from-bottom duration-300">
-        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[75vh] overflow-y-auto pb-24">
+        <div className="w-full max-w-2xl bg-[#0B1221] rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto pb-28">
           {/* Handle Bar */}
           <div className="flex justify-center pt-3 pb-2 sticky top-0 bg-[#0B1221] z-10">
             <div className="w-12 h-1 bg-white/10 rounded-full" />
@@ -267,6 +271,7 @@ export default function TradeBottomSheet({
           </div>
         </div>
       </div>
+      )}
 
       {/* Session Auth Modal */}
       {showSessionModal && (
