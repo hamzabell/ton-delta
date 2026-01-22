@@ -191,11 +191,11 @@ export default function WhitepaperPage() {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {[
-                    ["1. Select", "Choose a Meme Vault", "Fetch real-time funding rates"],
-                    ["2. Deposit", "Input TON & Max Loss", "Deploy W5 and sign Session Key"],
-                    ["3. Refine", "Click 'Start Refining'", "Execute Atomic Open"],
-                    ["4. Monitor", "View Live Audit Ledger", "Backend polls and logs rebalances"],
-                    ["5. Exit", "Hit 'Panic Button'", "Execute Emergency Unwind"],
+                    ["1. Select", "Browse Yields Page & Click Pair", "Fetch Market Data"],
+                    ["2. Enter", "Input TON Amount & Click 'Enter'", "Deploy W5, Sign Key, Execute Open"],
+                    ["3. Monitor", "Capital Ledger", "Track Equity & Delta Drift"],
+                    ["4. Manage", "Click Position for Details", "View PnL, Yield & Expiry"],
+                    ["5. Exit", "Click 'Close' or 'Panic Exit'", "Unwind Strategy & Settle to Wallet"],
                   ].map(([step, ui, backend], i) => (
                     <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                       <td className="p-4 font-bold text-[#E2FF00]">{step}</td>
