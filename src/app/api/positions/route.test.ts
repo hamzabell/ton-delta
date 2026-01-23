@@ -11,6 +11,9 @@ const { prismaMock } = vi.hoisted(() => {
       },
       user: {
         findFirst: vi.fn(),
+      },
+      auditLog: {
+        create: vi.fn(),
       }
     }
   }
@@ -23,6 +26,11 @@ vi.mock('@/lib/prisma', () => ({
 describe('Position Management API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('DATABASE_URL', 'postgresql://mock:mock@localhost:5432/mock');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('GET /api/positions should return user positions', async () => {

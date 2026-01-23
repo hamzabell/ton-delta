@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/constants';
+import { IS_TESTNET } from '@/lib/config';
 
 const DEDUST_API = API_CONFIG.dedust.poolsUrl;
 
@@ -35,33 +36,82 @@ export async function GET(request: Request) {
 
     // Refresh cache if empty, expired, or force refresh requested
     if (!cachedPairs.length || (now - lastFetchTime) > CACHE_DURATION || forceRefresh) {
-        console.log('[PAIRS API] Fetching DeDust pairs due to cache miss/expiry/force...');
-        console.log('[PAIRS API] Cache length:', cachedPairs.length, 'Last fetch:', new Date(lastFetchTime).toISOString(), 'Force:', forceRefresh);
-        
-        // Fetch from DeDust pools API
-            // Note: DeDust API returns ~30MB of data, which takes 10-15s to download
-            // We use our own in-memory cache instead of Next.js cache (which has 2MB limit)
-            const res = await fetch(DEDUST_API, { 
-                signal: AbortSignal.timeout(30000) // 30 second timeout for large payload
-            });
-            
-            console.log('[PAIRS API] DeDust API response status:', res.status);
-            if (!res.ok) throw new Error(`DeDust API Failed with status ${res.status}`);
+        console.log('[PAIRS API] Fetching pairs due to cache miss/expiry/force...');
+        let uniquePairs: any[] = [];
 
-            const pools = await res.json();
-            const uniquePairsMap = new Map();
+        // BRANCH: TESTNET (Use Storm Trade API)
+        if (IS_TESTNET) {
+             console.log('[PAIRS API] Mode: TESTNET (Source: Storm Trade)');
+             const stormUrl = `${API_CONFIG.stormTrade.baseUrl}/pairs`;
+             console.log('[PAIRS API] Fetching:', stormUrl);
+             
+             try {
+                // Disable SSL verification for development if needed, or just try standard fetch
+                // Note: In Node.js environment we might need an agent to ignore SSL if the testnet cert is bad
+                // But generally next.js fetch should work.
+                const res = await fetch(stormUrl, { 
+                    next: { revalidate: 30 },
+                    signal: AbortSignal.timeout(10000)
+                });
+                
+                if (!res.ok) throw new Error(`Storm API Failed: ${res.status}`);
+                const data = await res.json();
+                const pairs = Array.isArray(data) ? data : data.pairs || [];
+
+                uniquePairs = pairs.map((p: any) => {
+                    const id = p.symbol.toLowerCase().replace('_', '-');
+                    const [base, quote] = p.symbol.split(/-|_/);
+                    
+                    if (quote !== 'TON') return null;
+
+                    const lastPrice = parseFloat(p.lastPrice);
+                    const fundingRate = parseFloat(p.fundingRate || '0');
+                    
+                    const liquidity = parseFloat(p.liquidity || '0');
+
+                    return {
+                        id,
+                        name: `${base} / ${quote}`,
+                        spotToken: base,
+                        baseToken: quote,
+                        apr: (fundingRate * 24 * 365 * 100), 
+                        fundingRate: fundingRate * 100,
+                        volume24h: parseFloat(p.volume24h || '0'),
+                        liquidity, 
+                        risk: 'High', 
+                        category: CATEGORY_MAP[base] || 'Meme',
+                        icon: '⚡', 
+                        tvl: liquidity
+                    };
+                }).filter(Boolean);
+
+             } catch (err) {
+                 console.error('[PAIRS API] Storm Fetch Error:', err);
+                 throw err; // Propagate error so we see it in logs instead of silent fallback
+             }
+
+        } 
+        // BRANCH: MAINNET (Use DeDust API)
+        else {
+             console.log('[PAIRS API] Mode: MAINNET (Source: DeDust)');
+             const res = await fetch(DEDUST_API, { 
+                 signal: AbortSignal.timeout(30000)
+             });
+             
+             // ... DeDust parsing logic (existing) ...
+             if (!res.ok) throw new Error(`DeDust API Failed with status ${res.status}`);
+
+             const pools = await res.json();
+             const uniquePairsMap = new Map();
             
-            // Single Pass Optimization: Filter -> Map -> Dedupe
-            for (const p of pools) {
+             for (const p of pools) {
                  const hasTon = p.assets.some((a: any) => a.type === 'native' && a.metadata?.symbol === 'TON');
-                 // Quick skip if no TON
                  if (!hasTon) continue;
 
                  const tonIndex = p.assets.findIndex((a: any) => a.type === 'native' && a.metadata?.symbol === 'TON');
                  const tokenIndex = tonIndex === 0 ? 1 : 0;
                  const tokenAsset = p.assets[tokenIndex];
 
-                 // Skip if no token metadata or if stablecoin
                  if (!tokenAsset || !tokenAsset.metadata || tokenAsset.metadata.symbol?.includes('USD')) continue;
 
                  let reserves = BigInt(0);
@@ -70,18 +120,14 @@ export async function GET(request: Request) {
                         reserves = BigInt(p.reserves[0]);
                     }
                  } catch (e) {
-                     continue; // Skip malformed
+                     continue; 
                  }
                  
                  if (reserves <= BigInt(1000000000)) continue;
 
-                 // Mapping Logic
                  const symbol = tokenAsset.metadata.symbol;
                  const id = `${symbol.toLowerCase()}-ton`;
 
-                 // Dedupe check early - if we already have this ID with higher liquidity, skip
-                 // But wait, we need to calculate liquidity first to know if it's higher.
-                 
                  const tonReserves = parseFloat(p.reserves[tonIndex]) / 1e9;
                  const liquidity = tonReserves * 2; 
 
@@ -94,7 +140,6 @@ export async function GET(request: Request) {
                  
                  let apr = liquidity > 0 ? ((feesTon * 365) / liquidity) * 100 : 0;
                  
-                 // Randomized yields for empty pools (from existing logic)
                  if (apr === 0 && CATEGORY_MAP[symbol]) {
                       apr = 50 + Math.random() * 100;
                  } else if (apr === 0) {
@@ -118,25 +163,25 @@ export async function GET(request: Request) {
 
                 uniquePairsMap.set(id, pair);
             }
-            
             uniquePairs = Array.from(uniquePairsMap.values());
+        }
         
         cachedPairs = uniquePairs;
         lastFetchTime = now;
         console.log('[PAIRS API] Cache updated with', uniquePairs.length, 'pairs');
     } else {
-        console.log('[PAIRS API] Using cached pairs:', uniquePairs.length);
+        console.log('[PAIRS API] Using cached pairs:', cachedPairs.length);
     }
 
     // Server-Side Sorting Logic (Operates on cached/fresh data)
     // IMPORTANT: Clone array to avoid mutating cache reference during sort
-    const sortedPairs = [...uniquePairs]; 
+    const sortedPairs = [...cachedPairs]; 
 
     const idParam = url.searchParams.get('id');
     
     // Support single pair fetch for details page
     if (idParam) {
-        const pair = uniquePairs.find((p: any) => p.id === idParam);
+        const pair = sortedPairs.find((p: any) => p.id === idParam);
         if (pair) {
             return NextResponse.json(pair);
         }

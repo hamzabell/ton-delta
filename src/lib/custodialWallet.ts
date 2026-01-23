@@ -1,15 +1,14 @@
-import { TonClient, WalletContractV4, internal, SendMode } from 'ton';
+import { TonClient, WalletContractV4, internal, SendMode, OpenedContract } from 'ton';
+import { KeyPair } from 'ton-crypto';
 import { Address, Cell } from 'ton-core';
 import { mnemonicToPrivateKey } from 'ton-crypto';
-import { from, Observable, forkJoin } from 'rxjs';
+import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
-const tonClient = new TonClient({ endpoint: 'https://toncenter.com/api/v2/jsonRPC' });
+import { CURRENT_NETWORK } from './config';
 
-/**
- * Gets the keeper wallet instance as an Observable
- */
-export const getKeeperWallet$ = (): Observable<{ contract: any, key: any }> => {
+const tonClient = new TonClient({ endpoint: CURRENT_NETWORK.tonApi });
+export const getKeeperWallet$ = (): Observable<{ contract: OpenedContract<WalletContractV4>, key: KeyPair }> => {
   const mnemonic = process.env.KEEPER_MNEMONIC;
   if (!mnemonic) {
     throw new Error('KEEPER_MNEMONIC not found in environment variables');

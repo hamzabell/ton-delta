@@ -54,21 +54,29 @@ The "Watchman" is a background worker architecture that monitors the following m
 
 ### 4.1 Stasis Mode (Negative Carry Protection)
 
-When markets enter backwardation () and , the Redis worker triggers an atomic sequence to prevent "negative carry":
+When funding rates turn negative ($F < 0$) and $F_{ema} < -0.05\%$, the Redis worker triggers an automated retreat to protect capital. Users can configure their preferred "Idle Strategy":
 
-1.  **De-leveraging:** Close the Storm Trade short position.
+**A. Safe Harbor (Cash)** (Default)
 
-2.  **Liquidation:** Sell the spot asset via swap.coffee into TON.
+1.  **Atomic Liquidation:** Close Short + Sell Spot via swap.coffee/STON.fi.
+2.  **Cash Sweep:** Vault holds 100% TON (0% Risk, 0% APY).
+3.  **Use Case:** Short-term market choppiness (< 1 week).
 
-3.  **Migration:** Deposit 100% of recovered TON into STON.fi liquid staking to earn yield until market conditions improve.
+**B. Yield Hunter (Liquid Staking)**
+
+1.  **Atomic Liquidation:** Close Short + Sell Spot.
+2.  **Auto-Stake:** Vault automatically queues a swap from TON to **tsTON** (Two-Stage Execution for Atomic Safety).
+3.  **Use Case:** Earning ~4% APY during prolonged negative funding periods (> 2 weeks).
+4.  **Re-Entry:** Upon positive funding, `tsTON` is sold back to TON before re-initiating the basis trade.
 
 ### 4.2 Max Loss Circuit Breaker
 
 Designed to prevent capital destruction during "black swan" events or oracle lags.
 
-- **Principal Floor ():** A hard floor typically set at of initial capital ().
+- **Principal Floor ($P_{floor}$):** A hard floor typically set at $80-85\%$ of initial capital ($C_0$).
 
-- **Atomic Unwind:** If , the system executes an immediate market exit: cancels pending orders, market-closes the Storm short, and executes a spot sale via swap.coffee.
+- **Atomic Unwind:** If $E_{total} < P_{floor}$, the system executes an immediate market exit: cancels pending orders, market-closes the Storm short, and executes a spot sale.
+  - **Universal Exit Logic:** The unwinding engine is state-aware, capable of instantly liquidating active positions, cash holdings, or liquid staking tokens to return funds to the user in one atomic bundle.
 
 ---
 

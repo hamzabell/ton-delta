@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma';
 
 // Mock Exchange for MVP to avoid needing real API keys immediately
 const mockExchange = {
-  fetchFundingRate: async (symbol: string) => {
+  fetchFundingRate: async (_symbol: string) => {
     // Return a random positive funding rate between 0.01% and 0.05%
     return {
       fundingRate: 0.0001 + Math.random() * 0.0004,

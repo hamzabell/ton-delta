@@ -39,12 +39,14 @@ The protocol captures the **Funding Rate**—a periodic fee paid between long an
 
 ## 3. Technical Architecture: The "Watchman" System
 
-### 3.1. TON W5 Wallet & Session Keys
+### 3.1. Isolated W5 Vaults (Institutional Security)
 
-Pamelo is built on the **TON W5 Standard**, solving the "Signature Fatigue" that plagues traditional DeFi.
+Pamelo implements a strict **Isolated Vault Pattern** for maximum security. Unlike basic bots that request access to your main wallet, Pamelo deploys a **dedicated W5 Smart Contract** for every single position you open.
 
-- **Session Keys:** Users sign a single permission valid for 7 days. This allows the Pamelo backend to execute rebalances and funding harvests without constant user intervention.
-- **Gasless Experience:** W5’s flexible gas payment allows users to pay fees in the assets they are refining (e.g., $DOGS or $NOT), removing the need to hold extra TON for gas.
+- **Zero Contagion Risk:** Your main personal wallet never connects to the exchange. It simply funds the isolated Vault.
+- **Segregated Capital:** Each strategy runs in its own sandbox. A loss in one meme coin vault cannot affect your other positions or your main holdings.
+- **Strict Delegation:** The "Keeper" (Automation Bot) is granted permission _only_ on this specific Vault contract, not your main identity.
+- **Owner Control:** You retain full ownership (Admin Rights) of the Vault and can withdraw funds or revoke the Keeper at any time via the "Panic Button".
 
 ### 3.2. Redis-Backed Automation Engine
 

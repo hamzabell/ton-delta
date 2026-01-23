@@ -52,7 +52,8 @@ export const processDepositJob = async (job: Job) => {
                   entryPrice: 1,
                   currentPrice: 1,
                   fundingRate: 0,
-                  driftCoefficient: 0
+                  driftCoefficient: 0,
+                  vaultAddress: '' // No vault for legacy deposits
               }
           });
       }

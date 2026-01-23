@@ -30,6 +30,7 @@ export default function PositionsList({ onRefetch }: PositionsListProps) {
 
   // Reset pagination when filter changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(ITEMS_PER_PAGE);
   }, [selectedPairId]);
 
@@ -64,26 +65,36 @@ export default function PositionsList({ onRefetch }: PositionsListProps) {
     };
   }, [pairs]);
 
-  const handleClosePosition = async (id: string) => {
+  const handleExit = async (id: string, actionType: 'CLOSE' | 'PANIC') => {
     setIsProcessing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      const response = await fetch(`/api/positions/${id}/exit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: actionType === 'PANIC' ? 'USER_PANIC' : 'USER_CLOSE' })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate exit');
+      }
+
+      alert(`Exit Initiated Successfully!\nTx: ${data.txHash}\nRequest: ${data.message}`);
+      
       setSelectedPositionId(null);
-      // In real implementation, call an API to close proper
-      // await closePosition(id);
       if (onRefetch) onRefetch();
-    }, 2000);
+
+    } catch (error) {
+      console.error('Exit Error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to exit position');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handlePanic = async (id: string) => {
-    setIsProcessing(true);
-    // Simulate Panic API call
-    setTimeout(() => {
-        setIsProcessing(false);
-        setSelectedPositionId(null);
-    }, 2000);
-  };
+  const handleClosePosition = (id: string) => handleExit(id, 'CLOSE');
+  const handlePanic = (id: string) => handleExit(id, 'PANIC');
 
   return (
     <div className="space-y-4">

@@ -94,7 +94,7 @@ export default function PositionDetailsBottomSheet({
           </div>
 
           {/* Info Section */}
-          <div className="space-y-4 mb-10">
+          <div className="space-y-4 mb-8">
             <div className="px-5 py-4 border border-white/5 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-white/20" />
@@ -105,6 +105,35 @@ export default function PositionDetailsBottomSheet({
               <span className="text-[11px] font-black text-white italic">
                 {daysLeft}D Left
               </span>
+            </div>
+          </div>
+
+          {/* Vault History */}
+          <div className="mb-10">
+            <h4 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-4">Vault Activity</h4>
+            <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                {position.auditLogs && position.auditLogs.length > 0 ? (
+                    position.auditLogs.map((log: any) => (
+                        <div key={log.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                            <div>
+                                <p className="text-[9px] font-black text-white uppercase tracking-wider">
+                                    {log.action.replace(/_/g, " ")}
+                                </p>
+                                <p className="text-[8px] text-white/30 font-mono mt-0.5">
+                                    {new Date(log.timestamp).toLocaleString()}
+                                </p>
+                            </div>
+                            <div className={clsx("w-2 h-2 rounded-full", 
+                                log.level === 'ERROR' ? "bg-red-500" : 
+                                log.level === 'WARN' ? "bg-orange-500" : "bg-emerald-500"
+                            )} />
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-4">
+                        <p className="text-[8px] text-white/20 italic">No activity recorded yet.</p>
+                    </div>
+                )}
             </div>
           </div>
 

@@ -5,9 +5,14 @@ import {
   X,
   Check,
   Zap,
+  ShieldCheck,
 } from "lucide-react";
 import clsx from "clsx";
 import { usePositions } from "@/hooks/usePositions";
+import { useTonWallet, useTonConnectUI } from "@tonconnect/ui-react";
+import dynamic from 'next/dynamic';
+
+const StasisStrategyBottomSheet = dynamic(() => import('./StasisStrategyBottomSheet'));
 
 interface DelegationBottomSheetProps {
   pairId: string | null;
@@ -29,6 +34,9 @@ export default function DelegationBottomSheet({
   const [isConfirming, setIsConfirming] = useState(false);
   const [sessionDuration, setSessionDuration] = useState("7d");
   const [maxLoss, setMaxLoss] = useState("0");
+  
+  const [stasisOpen, setStasisOpen] = useState(false);
+  const [stasisPreference, setStasisPreference] = useState<"CASH" | "STAKE">("CASH");
 
   // Auto-set max loss to 50% of amount
   useEffect(() => {
@@ -45,8 +53,11 @@ export default function DelegationBottomSheet({
     }
   }, [isOpen]);
 
+  const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
+
   const handleExecute = async () => {
-    if (!amount || !pairId) return;
+    if (!amount || !pairId || !wallet) return;
     const stakeAmount = parseFloat(amount);
     const lossLimit = parseFloat(maxLoss);
 
@@ -58,12 +69,69 @@ export default function DelegationBottomSheet({
     setIsConfirming(true);
     
     try {
-      await createPosition(pairId, stakeAmount);
+        // 1. Prepare W5 Logic for ISOLATED VAULT
+        const { calculateVaultAddress, buildAddExtensionBody } = await import("@/lib/w5-utils");
+        const { Address, toNano } = await import("@ton/core");
+        const { Buffer } = await import("buffer");
+        
+        // Vault Owner = Current User
+        if (!wallet.account?.publicKey) {
+            alert("Wallet public key not available");
+            return;
+        }
+        const userPublicKey = Buffer.from(wallet.account.publicKey, "hex");
+        const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "");
+        
+        // 2. Derive deterministic Vault Address
+        const vault = await calculateVaultAddress(userPublicKey, keeperAddress);
+        const vaultAddressStr = vault.address.toString();
+
+        console.log("Calculated Vault Address:", vaultAddressStr);
+
+        // 3. Build Transaction Bundle
+        const authPayload = await buildAddExtensionBody(vault.address, keeperAddress);
+
+        const messages = [
+            // 1. Deploy & Fund
+            {
+                address: vaultAddressStr,
+                amount: toNano((stakeAmount + 0.1).toFixed(9)).toString(), // Capital + 0.1 TON for Gas/Storage
+                stateInit: vault.stateInit.toBoc().toString("base64"), // Deploy code
+                payload: undefined 
+            },
+        ];
+
+        const txResult = await tonConnectUI.sendTransaction({
+            messages,
+            validUntil: Date.now() + 5 * 60 * 1000 
+        });
+
+        // 4. Create Backend Record with Vault Address
+        const res = await fetch('/api/positions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pairId,
+                capitalTON: stakeAmount,
+                userId: wallet.account.address,
+                vaultAddress: vaultAddressStr, // Store the Isolated Vault Address
+                maxLossPercentage: (lossLimit / stakeAmount) || 0.20,
+                delegationDuration: sessionDuration,
+                txHash: txResult.boc,
+                stasisPreference
+            })
+        });
+
+        if (!res.ok) {
+             const errData = await res.json();
+             throw new Error(errData.error || "Failed to create position record");
+        }
       
-      alert(`Strategy Deployed via Pamelo W5 Account Successfully`);
-      onClose();
+        alert(`Strategy Deployed via Pamelo W5 Account Successfully`);
+        onClose();
     } catch (err) {
-      alert("Failed to deploy strategy: " + err);
+      console.error(err);
+      alert("Failed to deploy strategy: " + (err as Error).message);
     } finally {
       setIsConfirming(false);
     }
@@ -153,13 +221,42 @@ export default function DelegationBottomSheet({
                 </p>
               </div>
 
-              <div className="flex gap-3 items-start p-3 bg-white/5 rounded-xl">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                <p className="text-[9px] text-white/40 leading-relaxed font-bold uppercase tracking-wider">
-                  W5 Session Key restricted to TON-native pairs only. No global
-                  withdrawal rights.
-                </p>
+              {/* Stasis Strategy Selector */}
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                 <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">
+                   Idle Capital Strategy
+                 </label>
+                 <button 
+                    onClick={() => setStasisOpen(true)}
+                    className="w-full bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-4 flex items-center justify-between group transition-all"
+                 >
+                    <div className="flex items-center gap-3">
+                        <div className={clsx("w-10 h-10 rounded-lg flex items-center justify-center", stasisPreference === 'CASH' ? "bg-blue-400/20 text-blue-400" : "bg-emerald-400/20 text-emerald-400")}>
+                            {stasisPreference === 'CASH' ? <ShieldCheck className="w-5 h-5"/> : <Zap className="w-5 h-5"/>}
+                        </div>
+                        <div className="text-left">
+                            <div className="text-xs font-bold text-white uppercase tracking-wider">
+                                {stasisPreference === 'CASH' ? "Safe Harbor (Cash)" : "Yield Hunter (Stake)"}
+                            </div>
+                            <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
+                                {stasisPreference === 'CASH' ? "Risk-Free • 0% APY" : "Target ~4% APY"}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-lg bg-black/40 text-[9px] text-[#E2FF00] font-bold uppercase tracking-widest group-hover:bg-[#E2FF00] group-hover:text-black transition-colors">
+                        Change
+                    </div>
+                 </button>
               </div>
+
+              {/* Render Stasis Sheet */}
+              <StasisStrategyBottomSheet 
+                 isOpen={stasisOpen}
+                 onClose={() => setStasisOpen(false)}
+                 selectedStrategy={stasisPreference}
+                 onSelect={setStasisPreference}
+              />
+
             </div>
 
             <button

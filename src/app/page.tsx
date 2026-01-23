@@ -108,7 +108,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-48 pb-24 px-6 text-center relative z-10">
+      <section className="min-h-screen flex flex-col justify-center items-center pt-20 px-6 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E2FF00]/10 border border-[#E2FF00]/20 mb-12">
           <div className="w-1.5 h-1.5 rounded-full bg-[#E2FF00] animate-pulse"></div>
           <span className="text-[10px] font-black uppercase tracking-widest text-[#E2FF00]">
@@ -142,18 +142,11 @@ export default function LandingPage() {
               Join Community
             </Link>
           </div>
-          
-          <div className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-white/5 border border-white/5">
-            <ShieldCheck className="w-4 h-4 text-white/20" />
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
-              Non-Custodial W5 Deployment
-            </span>
-          </div>
         </div>
       </section>
 
       {/* Improved Stats Section */}
-      <section className="py-24 border-t border-white/5 relative overflow-hidden">
+      <section className="py-12 border-t border-white/5 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#E2FF00]/5 blur-[120px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-5xl mx-auto px-6 relative z-10">
@@ -200,7 +193,7 @@ export default function LandingPage() {
       </section>
 
       {/* Improved How It Works */}
-      <section className="py-32 px-6 border-t border-white/5 bg-white/[0.01]">
+      <section className="py-16 px-6 border-t border-white/5 bg-white/[0.01]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-[10px] font-bold text-[#E2FF00] uppercase tracking-[0.5em] mb-20 text-center">
             Protocol Workflow
@@ -240,7 +233,7 @@ export default function LandingPage() {
       </section>
 
       {/* Technical Vision CTA */}
-      <section className="py-48 px-6 border-t border-white/5 text-center">
+      <section className="py-24 px-6 border-t border-white/5 text-center">
         <h2 className="text-[10px] font-bold text-[#E2FF00] uppercase tracking-[0.5em] mb-8">
           The Watchman System
         </h2>

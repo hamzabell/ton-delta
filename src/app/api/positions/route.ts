@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Logger } from '@/services/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,13 @@ export async function GET(request: Request) {
     const positions = await prisma.position.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
-      include: { user: true } 
+      include: { 
+        user: true,
+        auditLogs: {
+            orderBy: { timestamp: 'desc' },
+            take: 20
+        }
+      } 
     });
 
     return NextResponse.json({ positions });
@@ -45,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { pairId, capitalTON, userId = 'demo-user' } = body;
+    const { pairId, capitalTON, userId = 'demo-user', maxLossPercentage } = body;
 
     if (!pairId || !capitalTON) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
@@ -53,16 +60,37 @@ export async function POST(request: Request) {
 
     // Atomic Position Creation (Simulation)
     
-    // Create dummy user if not exists (for prototype)
-    let user = await prisma.user.findFirst({ where: { id: userId } });
-    if (!user) {
-        const demoUser = await prisma.user.findFirst();
-        if (demoUser) {
-            user = demoUser;
-        } else {
-             // In real app, would error here. For now, try to proceed or fail gracefully.
-             // If no user found/create, we can't create position properly.
+    // Find User by ID or Wallet Address
+    let user = await prisma.user.findFirst({
+        where: {
+            OR: [
+                { id: userId },
+                { walletAddress: userId }
+            ]
         }
+    });
+
+    // Create User if doesn't exist (Auto-provisioning for connected wallet)
+    if (!user) {
+         console.log(`Auto-provisioning user for wallet: ${userId}`);
+         try {
+             user = await prisma.user.create({
+                 data: {
+                     id: userId, // Use wallet addr as ID
+                     walletAddress: userId,
+                     // Generate random referral code
+                     referralCode: `REF-${userId.slice(0, 4)}-${Date.now().toString().slice(-4)}`,
+                     // Generate mock unique Telegram ID (using timestamp to avoid collision)
+                     telegramId: BigInt(Date.now()),
+                     username: 'WalletUser'
+                 }
+             });
+         } catch (createError) {
+             console.error('Failed to auto-create user', createError);
+             // Verify if it failed due to race condition and user now exists
+             user = await prisma.user.findFirst({ where: { walletAddress: userId } });
+             if (!user) throw createError;
+         }
     }
     
     const position = await prisma.position.create({
@@ -79,8 +107,20 @@ export async function POST(request: Request) {
         currentPrice: 1.0,
         fundingRate: 0.01,
         driftCoefficient: 0,
-        status: 'active'
+        status: 'active',
+        maxLossPercentage: maxLossPercentage || 0.20,
+        delegationDuration: body.delegationDuration || '7d',
+        delegationExpiry: calculateExpiry(body.delegationDuration || '7d'),
+        stasisPreference: body.stasisPreference || 'CASH',
+        vaultAddress: body.vaultAddress || user?.walletAddress // Fallback to user wallet if no specific vault addr (e.g. non-custodial)
       }
+    });
+
+    // Log Creation Event
+    await Logger.info('API', 'POSITION_CREATED', position.id, {
+        vaultAddress: body.vaultAddress,
+        capital: capitalTON,
+        delegationDuration: body.delegationDuration
     });
 
     return NextResponse.json({ 
@@ -92,4 +132,16 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
+}
+
+function calculateExpiry(duration: string): Date {
+    const now = Date.now();
+    const map: Record<string, number> = {
+        '1h': 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000,
+        '1y': 365 * 24 * 60 * 60 * 1000
+    };
+    return new Date(now + (map[duration] || map['7d']));
 }

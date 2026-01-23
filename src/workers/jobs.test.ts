@@ -10,6 +10,9 @@ const { prismaMock } = vi.hoisted(() => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      auditLog: {
+        create: vi.fn(),
+      }
     },
   };
 });
@@ -21,6 +24,7 @@ vi.mock('@/lib/prisma', () => ({
 describe('Watchman Engine Jobs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('KEEPER_MNEMONIC', 'word word word word word word word word word word word word');
   });
 
   describe('Drift Monitor Job', () => {
@@ -31,9 +35,10 @@ describe('Watchman Engine Jobs', () => {
         spotAmount: 100,
         perpAmount: 98,
         status: 'active',
+        user: { walletAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c' }
       });
 
-      const result = await driftMonitorJob({ data: { positionId: 'pos-1' } } as any);
+      const result = await driftMonitorJob({ data: { positionId: 'pos-1' } } as unknown as Job);
       
       expect(result?.rebalanceTriggered).toBe(true);
       expect(prismaMock.position.update).toHaveBeenCalled();
@@ -48,7 +53,7 @@ describe('Watchman Engine Jobs', () => {
         status: 'active',
       });
 
-      const result = await driftMonitorJob({ data: { positionId: 'pos-1' } } as any);
+      const result = await driftMonitorJob({ data: { positionId: 'pos-1' } } as unknown as Job);
       expect(result?.rebalanceTriggered).toBe(false);
     });
   });
@@ -63,7 +68,7 @@ describe('Watchman Engine Jobs', () => {
         status: 'active'
       });
 
-      const result = await safetyCheckJob({ data: { positionId: 'pos-1' } } as any);
+      const result = await safetyCheckJob({ data: { positionId: 'pos-1' } } as unknown as Job);
       
       expect(result?.emergencyTriggered).toBe(true);
       expect(prismaMock.position.update).toHaveBeenCalledWith(

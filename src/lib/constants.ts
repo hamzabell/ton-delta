@@ -1,13 +1,15 @@
+import { CURRENT_NETWORK } from './config';
+
 export const API_CONFIG = {
   stormTrade: {
-    baseUrl: 'https://api.storm.trade/api/v1',
-    rpcUrl: 'https://toncenter.com/api/v2/jsonRPC',
+    baseUrl: CURRENT_NETWORK.stormApi,
+    rpcUrl: CURRENT_NETWORK.tonApi,
   },
   swapCoffee: {
     baseUrl: 'https://api.swap.coffee/api/v1',
   },
   ton: {
-    rpcUrl: process.env.TON_ENDPOINT || 'https://toncenter.com/api/v2/jsonRPC',
+    rpcUrl: CURRENT_NETWORK.tonApi,
   },
   dedust: {
     // DeDust public API - mainnet only

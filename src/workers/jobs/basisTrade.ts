@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import { prisma } from '../../lib/prisma';
-import { getSpotPrice$, buildSwapTransaction$ } from '../../lib/swapcoffee';
+import { stonfi } from '../../lib/stonfi'; // Changed import
 import { getMarkPrice$ } from '../../lib/storm';
 import { sendTransactions$, getKeeperWallet$ } from '../../lib/custodialWallet';
 import { toNano } from 'ton-core';
@@ -10,7 +10,7 @@ import { map, switchMap, catchError, concatMap } from 'rxjs/operators';
 const SPREAD_THRESHOLD = 0.005; // 0.5% premium to enter
 
 export const processBasisJob = async (job: Job) => {
-  console.log(`[Basis] Scanning for custodial arbitrage (swap.coffee RxJS Stream vs Storm)...`);
+  console.log(`[Basis] Scanning for custodial arbitrage (Ston.fi vs Storm)...`);
 
   // 1. Get all Basis strategies as a stream
   const strategies$ = from(prisma.strategy.findMany({
@@ -31,7 +31,7 @@ export const processBasisJob = async (job: Job) => {
           const toAddr = strategy.toAsset || 'EQCxE6mUt_9sXn39O_9t-JLo-zic7Sj1f_O1-8g6f_S0';
 
           return zip(
-            getSpotPrice$(fromAddr, toAddr).pipe(map(p => ({ spot: p }))),
+            stonfi.getSpotPrice$(fromAddr, toAddr).pipe(map(p => ({ spot: p }))), // Use stonfi
             getMarkPrice$(strategy.ticker || 'TON').pipe(map(p => ({ future: p })))
           ).pipe(
             switchMap(([{ spot }, { future }]) => {
@@ -53,20 +53,27 @@ export const processBasisJob = async (job: Job) => {
                 return getKeeperWallet$().pipe(
                   switchMap(({ contract }) => {
                     const amountToSwap = toNano('10').toString();
-                    return buildSwapTransaction$({
-                      senderAddress: contract.address.toString(),
-                      fromAddress: fromAddr,
-                      toAddress: toAddr,
+                    
+                    // Ston.fi buildSwapTx returns a Promise<SingleTxObject>
+                    return from(stonfi.buildSwapTx({
+                      userWalletAddress: contract.address.toString(),
+                      fromToken: fromAddr,
+                      toToken: toAddr,
                       amount: amountToSwap,
-                      slippage: 0.01
-                    }).pipe(
+                      minOutput: '1' // Simplified slippage
+                    })).pipe(
+                      map(tx => [{
+                          address: tx.to,
+                          value: tx.value.toString(),
+                          cell: Buffer.from(tx.body).toString('base64') // Mock body is string 'x', need to handle real body if possible or keep mock
+                      }]),
                       switchMap(transactions => sendTransactions$(transactions)),
                       switchMap(result => from(prisma.transaction.create({
                         data: {
                           strategyId: strategy.id,
                           type: 'SWAP',
                           status: 'SUCCESS',
-                          txHash: `rxjs_tx_${Date.now()}`,
+                          txHash: `stonfi_tx_${Date.now()}`,
                           fromAsset: fromAddr,
                           toAsset: toAddr,
                           amount: 10,

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { TonClient, Address } from '@ton/ton';
-import { API_CONFIG } from '@/lib/constants';
+import { CURRENT_NETWORK } from '@/lib/config';
 
 // Initialize TON Client
 const client = new TonClient({
-  endpoint: API_CONFIG.ton.rpcUrl,
+  endpoint: CURRENT_NETWORK.tonApi,
   apiKey: process.env.TON_API_KEY, 
 });
 

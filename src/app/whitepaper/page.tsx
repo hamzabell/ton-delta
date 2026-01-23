@@ -169,7 +169,7 @@ export default function WhitepaperPage() {
                 <Activity className="w-6 h-6 text-[#E2FF00] mb-4" />
                 <h4 className="font-black italic uppercase text-sm mb-2">Stasis Mode</h4>
                 <p className="text-xs text-white/40 leading-relaxed">
-                  If funding rates turn negative, the vault closes positions and moves funds into liquid staking (e.g., stTON) to earn yield until positive funding returns.
+                  If funding rates turn negative, the vault executes your "Idle Strategy": either retreating to <strong>Safe Harbor (Cash)</strong> for maximum safety, or <strong>Yield Hunter (Staked)</strong> which atomically swaps to tsTON to earn ~4% APY while waiting.
                 </p>
               </div>
             </div>

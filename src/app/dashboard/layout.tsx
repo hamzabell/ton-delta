@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Wallet, Shield, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TonConnectButton } from "@tonconnect/ui-react";
+import { NetworkChecker } from "@/components/common/NetworkChecker";
 
 export default function DashboardLayout({
   children,
@@ -40,6 +41,8 @@ export default function DashboardLayout({
             <TonConnectButton />
           </div>
         </header>
+
+        <NetworkChecker />
 
         {/* Main Content Area */}
         <main className="flex-1 px-6 pt-24 pb-32 w-full overflow-y-auto no-scrollbar">

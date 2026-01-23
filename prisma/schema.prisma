@@ -3,10 +3,12 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -50,6 +52,8 @@ model Transaction {
   toAsset        String?
   amount         Float?
   basisCaptured  Float?
+  realizedPnl    Float?   @default(0) // Net Profit/Loss in USDT/TON
+  feesPaid       Float?   @default(0) // Protocol + Gas fees
   timestamp      DateTime @default(now())
 }
 
@@ -66,6 +70,10 @@ model Position {
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   pairId          String   // e.g. "dogs-ton"
+  stasisPreference String @default("CASH") // "CASH" or "STAKE"
+  
+  // Vault Architecture
+  vaultAddress    String   // The unique W5 Contract Address holding this position's funds
 
   // Capital tracking
   spotAmount      Float    // Quantity of spot tokens
@@ -76,6 +84,7 @@ model Position {
   perpValue       Float
   totalEquity     Float    
   principalFloor  Float    // Stop-loss trigger level
+  maxLossPercentage Float  @default(0.20) // Configurable Max Loss (default 20%)
 
   // Metrics
   entryPrice      Float
@@ -83,10 +92,16 @@ model Position {
   fundingRate     Float
   driftCoefficient Float   // Delta imbalance
   
+  // Delegation Details
+  delegationExpiry DateTime? // When the session key expires (backend enforced)
+  delegationDuration String? // Original duration selected (e.g. "7d")
+
   status          String   @default("active") // "active", "stasis", "closed"
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  auditLogs       AuditLog[]
 }
 
 model FundingEvent {
@@ -94,4 +109,35 @@ model FundingEvent {
   strategyId  String
   amount      Float    // Amount earned in USDT
   timestamp   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  timestamp   DateTime  @default(now())
+  level       String    // "INFO", "WARN", "ERROR"
+  component   String    // "Watchman", "Risk", "Funding", "StonFi"
+  action      String    // "ENTER_STASIS", "PAY_FEE", "REBALANCE"
+  details     Json?     // Detailed context
+  positionId  String?
+  position    Position? @relation(fields: [positionId], references: [id])
+}
+
+model JobRun {
+  id             String    @id @default(uuid())
+  workerName     String    // "strategy-job", "funding-monitor"
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  durationMs     Int?
+  status         String    // "SUCCESS", "FAILURE"
+  errorStack     String?   // If failed
+  itemsProcessed Int?
+}
+
+model MetricSnapshot {
+  id               String   @id @default(uuid())
+  timestamp        DateTime @default(now())
+  totalTvl         Float
+  blendedApy       Float
+  activeStrategies Int
+  activePositions  Int
 }

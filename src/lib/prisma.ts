@@ -6,7 +6,7 @@ import { PrismaClient } from '@prisma/client';
 // but only when functionality is actually accessed.
 
 const prismaClientSingleton = () => {
-  return new PrismaClient();
+  return new PrismaClient({});
 };
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;

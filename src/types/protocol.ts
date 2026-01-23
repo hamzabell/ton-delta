@@ -13,6 +13,7 @@ export interface Position {
   status: 'active' | 'stasis' | 'emergency';
   createdAt: string;
   updatedAt: string;
+  auditLogs?: any[];
 }
 
 export interface TradingPair {

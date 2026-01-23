@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Rocket, ShieldCheck, ChevronDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Slider } from "@/components/ui/slider";
-import { useTonWallet, TonConnectButton } from "@tonconnect/ui-react";
+import { useTonWallet, TonConnectButton, useTonConnectUI } from "@tonconnect/ui-react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +17,7 @@ const PAIRS = [
 
 export default function CreateCustomTradePage() {
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const router = useRouter();
   
   const [formData, setFormData] = useState({
@@ -38,16 +39,65 @@ export default function CreateCustomTradePage() {
     p.quote.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!wallet || !formData.amount[0]) return;
+    
     setIsSubmitting(true);
     
-    // Simulate deployment
-    setTimeout(() => {
-        setIsSubmitting(false);
-        alert(`Custom Trade Deployed!\nPair: ${formData.pair.toUpperCase()}\nDirection: ${formData.direction}\nAmount: $${formData.amount[0]}`);
+    try {
+        // 1. Prepare W5 Authorization Logic
+        const { buildAddExtensionBody } = await import("@/lib/w5-utils");
+        const { Address, toNano } = await import("@ton/core");
+        
+        const userAddress = Address.parse(wallet.account.address);
+        // Keeper Address deals with Delegation
+        const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || ""); 
+        // Treasury deals with Funds (Mock Vault)
+        const treasuryAddress = process.env.PAMELO_TREASURY_WALLET || keeperAddress.toString();
+
+        // 2. Build Payloads
+        const authPayload = await buildAddExtensionBody(userAddress, keeperAddress);
+        
+        // 3. Construct Helper Message Bundle
+        // Msg 1: Install Extension (To Self)
+        const messages = [
+            {
+                address: wallet.account.address,
+                amount: toNano("0.05").toString(), 
+                payload: authPayload.toBoc().toString("base64")
+            }
+        ];
+
+        // 4. Send Transaction (One User Signature)
+        const txResult = await tonConnectUI.sendTransaction({
+            messages: messages,
+            validUntil: Date.now() + 5 * 60 * 1000 
+        });
+        
+        // 5. Create Backend Position Record
+        const res = await fetch('/api/positions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pairId: formData.pair,
+                capitalTON: formData.amount[0],
+                userId: wallet.account.address, // Use wallet as ID for now
+                txHash: txResult.boc // Store BOC/Hash if needed
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to create position record");
+
+        alert(`Custom Trade Deployed Successfully!\nW5 Authorization Sent.`);
         router.push("/dashboard/portfolio");
-    }, 1500);
+
+    } catch (e) {
+        console.error(e);
+        alert("Deployment Failed: " + (e as Error).message);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const selectPair = (pairId: string) => {
@@ -181,7 +231,7 @@ export default function CreateCustomTradePage() {
               </div>
 
               {/* Submit Button */}
-              <div className="pt-6">
+              <div className="pt-2">
                   {!wallet ? (
                        <div className="flex justify-center">
                            <TonConnectButton />
