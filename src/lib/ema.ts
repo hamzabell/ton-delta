@@ -44,7 +44,7 @@ export const EMAService = {
         if (data.length === 0) return null;
 
         // Parse prices
-        const prices = data.map(d => parseFloat(d.split(':')[0]));
+        const prices = data.map((d: string) => parseFloat(d.split(':')[0]));
         
         // Calculate SMA (Simple Moving Average) first if not enough data for true EMA recursion
         // Or strictly implement standard EMA?
@@ -54,7 +54,7 @@ export const EMAService = {
         // Whitepaper says "EMA_5". Let's assume standard SMA over the window for simplicity and robustness against outliers.
         // Actually, let's filter out outliers (Median?) No, Average is fine for smoothing.
         
-        const sum = prices.reduce((a, b) => a + b, 0);
+        const sum = prices.reduce((a: number, b: number) => a + b, 0);
         return sum / prices.length;
     }
 };

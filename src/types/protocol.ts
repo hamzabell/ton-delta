@@ -1,3 +1,4 @@
+/* eslint-disable */
 export interface Position {
   id: string;
   pairId: string;

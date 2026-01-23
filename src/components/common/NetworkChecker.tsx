@@ -3,37 +3,25 @@
 
 import { useTonWallet, CHAIN } from "@tonconnect/ui-react";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useState } from "react";
 import { IS_TESTNET } from "@/lib/config";
 
 export function NetworkChecker() {
   const wallet = useTonWallet();
-  const [showBanner, setShowBanner] = useState(false);
 
-  useEffect(() => {
-    if (!wallet) {
-      setShowBanner(false);
-      return;
-    }
-
+  // Derive state directly during render
+  const isWrongNetwork = (() => {
+    if (!wallet) return false;
+    
     if (IS_TESTNET) {
-      // We expect Testnet (-3). blocked if Mainnet (-239)
-      if (wallet.account.chain === CHAIN.MAINNET) {
-        setShowBanner(true);
-      } else {
-        setShowBanner(false);
-      }
+       // We expect Testnet (-3). blocked if Mainnet (-239)
+       return wallet.account.chain === CHAIN.MAINNET;
     } else {
-      // We expect Mainnet (-239).
-      if (wallet.account.chain === CHAIN.TESTNET) {
-        setShowBanner(true);
-      } else {
-        setShowBanner(false);
-      }
+       // We expect Mainnet (-239).
+       return wallet.account.chain === CHAIN.TESTNET;
     }
-  }, [wallet]);
+  })();
 
-  if (!showBanner) return null;
+  if (!isWrongNetwork) return null;
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm">

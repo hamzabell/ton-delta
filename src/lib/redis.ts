@@ -6,6 +6,11 @@ import { redisConfig } from '../workers/config';
 // We favor Upstash HTTP client for Next.js Serverless/Edge environments (standard API routes)
 // We favor IORedis (TCP) for long-running processes (workers) or if specifically configured.
 
+// Universal Redis Client Export using explicit singleton pattern
+// We favor Upstash HTTP client for Next.js Serverless/Edge environments (standard API routes)
+// We favor IORedis (TCP) for long-running processes (workers) or if specifically configured.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let redisClient: any;
 
 // Check if we should use Upstash HTTP
@@ -19,11 +24,12 @@ if (useUpstashHttp) {
 } else {
     // Fallback to IORedis (TCP)
     redisClient = new Redis(process.env.REDIS_URL || {
-        ...(redisConfig as any),
+        ...redisConfig,
         retryStrategy: (times: number) => Math.min(times * 50, 2000),
         maxRetriesPerRequest: null
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     redisClient.on('error', (err: any) => {
         if (process.env.NODE_ENV === 'development' && err?.message?.includes('ECONNREFUSED')) {
             return;

@@ -1,3 +1,5 @@
+import { ConnectionOptions } from 'bullmq';
+
 // Use REDIS_URL if available (common in platform deployment and provided by Upstash)
 let config: ConnectionOptions;
 

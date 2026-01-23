@@ -31,7 +31,7 @@ export default function StasisStrategyBottomSheet({
     },
     {
       id: "STAKE",
-      name: "Yield Hunter",
+      name: &quot;Yield Hunter&quot;,
       emoji: "🌾",
       icon: Sprout,
       desc: "Auto-swap to Liquid Staking (stTON) to earn ~4% APY while waiting. Note: Incurs ~0.6% swap fees.",
@@ -110,7 +110,7 @@ export default function StasisStrategyBottomSheet({
             
             <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
                 <p className="text-[9px] text-orange-200 font-bold uppercase tracking-widest leading-relaxed">
-                   ⚠️ "Yield Hunter" aims for ~4% APY but costs ~0.6% in fees per switch. Only use if you expect long bear markets (&gt; 2 weeks).
+                   ⚠️ &quot;Yield Hunter&quot; aims for ~4% APY but costs ~0.6% in fees per switch. Only use if you expect long bear markets (&gt; 2 weeks).
                 </p>
             </div>
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ExecutionService } from '../lib/execution';
@@ -97,11 +98,11 @@ describe('Core Features E2E Verification', () => {
                 pairId: 'DOGS-TON'
             };
             
-            // @ts-ignore
+            // @ts-expect-error
             prisma.position.findUnique.mockResolvedValue(mockPosition);
 
             const { checkContractDeployed } = await import('../lib/w5-utils');
-            // @ts-ignore
+            // @ts-expect-error
             checkContractDeployed.mockResolvedValue(true);
 
             // Execute
@@ -138,11 +139,11 @@ describe('Core Features E2E Verification', () => {
                 vaultAddress: mockVaultAddress, 
                 user: { walletAddress: mockUserAddress }
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
              
              const { checkContractDeployed } = await import('../lib/w5-utils');
-             // @ts-ignore
+             // @ts-expect-error
              checkContractDeployed.mockResolvedValue(false);
 
              await expect(ExecutionService.enterInitialPosition(mockPositionId))
@@ -158,7 +159,7 @@ describe('Core Features E2E Verification', () => {
                 id: mockPositionId,
                 vaultAddress: mockVaultAddress
             };
-            // @ts-ignore
+            // @ts-expect-error
             prisma.position.findUnique.mockResolvedValue(mockPosition);
 
             // Execute
@@ -184,7 +185,7 @@ describe('Core Features E2E Verification', () => {
                  id: mockPositionId,
                  vaultAddress: mockVaultAddress
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
  
              // Execute
@@ -213,7 +214,7 @@ describe('Core Features E2E Verification', () => {
                  entryPrice: 1,
                  currentPrice: 1
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
              // Execute
@@ -247,7 +248,7 @@ describe('Core Features E2E Verification', () => {
                 totalEquity: 100,
                 user: { walletAddress: mockUserAddress }
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
              // Execute
@@ -274,7 +275,7 @@ describe('Core Features E2E Verification', () => {
                 totalEquity: 100,
                 user: { walletAddress: mockUserAddress }
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
              // Execute
@@ -309,7 +310,7 @@ describe('Core Features E2E Verification', () => {
                 entryPrice: 1,
                 currentPrice: 1
              };
-             // @ts-ignore
+             // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
              await ExecutionService.executePanicUnwind(mockPositionId, 'USER_PANIC');

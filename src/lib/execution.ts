@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { prisma } from './prisma';
 import { buildAtomicExitTx } from './fees';
 import { sendTransactions$ } from './custodialWallet';

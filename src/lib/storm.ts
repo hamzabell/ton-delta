@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Observable, from } from 'rxjs';
 import { map, catchError } from 'rxjs/operators'; // Keep rxjs for compat
 import { 

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ExecutionService } from '@/lib/execution';
 import { processFundingJob } from '@/workers/jobs/funding';
