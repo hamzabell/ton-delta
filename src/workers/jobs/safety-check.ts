@@ -6,6 +6,7 @@ import { getPosition$, getMarkPrice$ } from '../../lib/storm';
 import { stonfi } from '../../lib/stonfi';
 import { firstValueFrom } from 'rxjs';
 import { fromNano } from '@ton/core';
+import { EMAService } from '../../lib/ema';
 
 export async function safetyCheckJob(job: Job) {
   const { positionId } = job.data;
@@ -38,9 +39,15 @@ export async function safetyCheckJob(job: Job) {
       const realPerpAmount = perpPos.amount;
 
       // 3. Prices (Spot + Mark)
-      // Using Ston.fi for Spot Price (assuming TON/USDT context or similar)
-      // For MVP, if ticker is TON, price is TON/USDT.
-      const spotPrice = await firstValueFrom(stonfi.getSpotPrice$('TON', 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixDn7Nx24_USDT'));
+      // Using Ston.fi for Spot Price
+      const rawSpotPrice = await firstValueFrom(stonfi.getSpotPrice$('TON', 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixDn7Nx24_USDT'));
+      
+      // Update EMA History
+      await EMAService.pushPrice('TON', rawSpotPrice);
+      
+      // Fetch Smoothed Price (5 minute window)
+      const spotPrice = (await EMAService.getEMA('TON', 300)) || rawSpotPrice;
+
       const perpMarkPrice = await firstValueFrom(getMarkPrice$(ticker));
 
       // 4. Calculate Real Equity

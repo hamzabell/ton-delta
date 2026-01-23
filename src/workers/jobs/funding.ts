@@ -3,6 +3,8 @@ import { prisma } from '../../lib/prisma';
 import { getFundingRate$ } from '../../lib/storm';
 import { firstValueFrom } from 'rxjs';
 import { Logger } from '../../services/logger';
+import { EMAService } from '../../lib/ema';
+import { ExecutionService } from '../../lib/execution';
 
 export const processFundingJob = async (job: Job) => {
     const logCtx = 'funding-job';
@@ -44,6 +46,24 @@ export const processFundingJob = async (job: Job) => {
                 // We track it as a discrete event for the UI "Yield" chart.
                 const positionSize = position.perpAmount || 0;
                 const estimatedPayout = positionSize * fundingRate;
+
+                // --- FUNDING GUARD (New) ---
+                // 1. Push Rate to History
+                await EMAService.pushPrice(`funding:${ticker}`, fundingRate);
+
+                // 2. Check 24h Average
+                const avg24h = await EMAService.getEMA(`funding:${ticker}`, 24 * 60 * 60);
+                
+                if (avg24h !== null && avg24h < 0) {
+                     // NEGATIVE FUNDING SPIRAL DETECTED
+                     Logger.warn(logCtx, `Negative 24h Funding Average (${avg24h.toFixed(6)}) for ${ticker}. Triggering STASIS.`, position.id);
+                     
+                     // Trigger Stasis Mode (Soft Exit)
+                     if (position.status === 'active') {
+                         await ExecutionService.enterStasis(position.id);
+                         continue; // Skip payment logic for this cycle as we are exiting
+                     }
+                }
 
                 if (Math.abs(estimatedPayout) > 0) {
                      await prisma.fundingEvent.create({

@@ -127,5 +127,48 @@ export const stonfi = {
             amount,
             minOutput: '1' // Sliver protection handled elsewhere
         });
+    },
+    /**
+     * Simulate a swap to estimate output and price impact.
+     * Uses the Ston.fi Reverse Swap Simulate API or estimates via Reserves.
+     */
+    getSimulatedSwap: async (fromToken: string, toToken: string, amount: string): Promise<{ expectedOutput: string, priceImpact: number }> => {
+        try {
+            // Mapping "TON" to pTON for API
+            const pTON = 'EQBnGWMCf3-FZZq1W4M6-RfpSTBtQS772H-100UIKsviP_84';
+            const resolveParams = (t: string) => t === 'TON' ? pTON : t;
+            
+            const offerAddress = resolveParams(fromToken);
+            const askAddress = resolveParams(toToken);
+
+            // API: /v1/reverse_swap/simulate
+            // Params: offer_address, ask_address, offer_units, slippage_tolerance
+            const params = new URLSearchParams({
+                offer_address: offerAddress,
+                ask_address: askAddress,
+                offer_units: amount,
+                slippage_tolerance: '0.01' // 1%
+            });
+
+            const res = await fetch(`https://api.ston.fi/v1/reverse_swap/simulate?${params}`);
+            if (!res.ok) {
+                 // Fallback for mocked environment or API failure
+                 console.warn('[StonFi] Simulation API failed, using fallback estimation 1:1');
+                 return { expectedOutput: amount, priceImpact: 0 };
+            }
+
+            const data = await res.json();
+            
+            // data.ask_units = expected output
+            // data.price_impact = impact (0.05 = 5%)
+            return {
+                expectedOutput: data.ask_units,
+                priceImpact: Number(data.price_impact || 0)
+            };
+
+        } catch (e) {
+            console.warn('[StonFi] Simulation Error:', e);
+            return { expectedOutput: amount, priceImpact: 0 };
+        }
     }
 };

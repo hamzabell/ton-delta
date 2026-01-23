@@ -57,7 +57,7 @@ export default function CreateCustomTradePage() {
         const treasuryAddress = process.env.PAMELO_TREASURY_WALLET || keeperAddress.toString();
 
         // 2. Build Payloads
-        const authPayload = await buildAddExtensionBody(userAddress, keeperAddress);
+        const authPayload = await buildAddExtensionBody(vaultAddress, keeperAddress);
         
         // 3. Construct Helper Message Bundle
         // Msg 1: Install Extension (To Self)

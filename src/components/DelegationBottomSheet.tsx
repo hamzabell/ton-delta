@@ -97,7 +97,7 @@ export default function DelegationBottomSheet({
                 address: vaultAddressStr,
                 amount: toNano((stakeAmount + 0.1).toFixed(9)).toString(), // Capital + 0.1 TON for Gas/Storage
                 stateInit: vault.stateInit.toBoc().toString("base64"), // Deploy code
-                payload: undefined 
+                payload: authPayload.toBoc().toString("base64")
             },
         ];
 
