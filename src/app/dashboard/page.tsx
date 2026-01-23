@@ -271,7 +271,7 @@ export default function OpportunitiesPage() {
                 <div>
                   <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-white leading-none">
-                        {pair.name}
+                        {pair.name.split('/')[0].trim()}
                       </h3>
                       {pair.risk === 'Conservative' && (
                            <Shield className="w-3 h-3 text-emerald-500 fill-emerald-500/20" />
