@@ -3,7 +3,7 @@ import { redisConfig } from '../workers/config';
 
 // Create a centralized Redis client for the application
 const redis = new Redis({
-  ...redisConfig,
+  ...(redisConfig as any),
   // Add retry strategy for robustness
   retryStrategy: (times) => {
     const delay = Math.min(times * 50, 2000);

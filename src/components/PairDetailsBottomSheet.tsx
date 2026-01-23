@@ -66,9 +66,7 @@ export default function PairDetailsBottomSheet({
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h1 className="text-lg font-bold text-white tracking-tight italic uppercase">
-                  {pair.spotToken} / {pair.baseToken}
-                </h1>
+                  {pair.spotToken}
                 <p className="text-[9px] text-[#E2FF00] font-bold uppercase tracking-widest italic">
                   TON Native Yield
                 </p>

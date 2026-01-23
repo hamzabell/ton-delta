@@ -48,7 +48,7 @@ vi.mock('@/lib/stonfi', () => ({
 }));
 
 vi.mock('@/lib/onChain', () => ({
-    getTonBalance: vi.fn().mockResolvedValue(100000000000n), // 100 TON in Nano
+    getTonBalance: vi.fn().mockResolvedValue(BigInt("100000000000")), // 100 TON in Nano
     getTonClient: vi.fn()
 }));
 
@@ -81,7 +81,7 @@ describe('E2E Bot Lifecycle & Risk Guards', () => {
         
         vi.mocked(stormMock.getFundingRate$).mockReturnValue(of(0));
         vi.mocked(stormMock.getMarkPrice$).mockReturnValue(of(5.0));
-        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 100 }));
+        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 100, entryPrice: 5.0 }));
     });
 
     it('Scenario 1: Steady State -> Funding Accrual', async () => {
@@ -128,7 +128,7 @@ describe('E2E Bot Lifecycle & Risk Guards', () => {
         // UNHEDGED LONG Setup: 
         // Spot 100 (from Balance)
         // Perp 0 (On Chain)
-        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 0 }));
+        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 0, entryPrice: 0 }));
         
         // DB Position reflecting risk settings
         const riskPosition = { ...mockPosition, perpAmount: 0, principalFloor: 450 };
@@ -167,7 +167,7 @@ describe('E2E Bot Lifecycle & Risk Guards', () => {
         vi.mocked(stormMock.getMarkPrice$).mockReturnValue(of(4.0));
         
         // UNHEDGED LONG
-        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 0 }));
+        vi.mocked(stormMock.getPosition$).mockReturnValue(of({ amount: 0, entryPrice: 0 }));
 
         const riskPosition = { ...mockPosition, perpAmount: 0, principalFloor: 450 };
         vi.mocked(prisma.position.findUnique).mockResolvedValue(riskPosition as any);

@@ -198,7 +198,7 @@ export const ExecutionService = {
 
                     // Slippage Protected Output
                     // minOutput = 99% of Expected
-                    const minOut = (BigInt(expectedOutput) * 99n) / 100n;
+                    const minOut = (BigInt(expectedOutput) * BigInt(99)) / BigInt(100);
 
                     const sellSpotTx = await stonfi.buildSwapTx({
                          userWalletAddress: position.vaultAddress || position.user.walletAddress!,
@@ -215,10 +215,7 @@ export const ExecutionService = {
                 }
 
 
-                liquidationMessages.push(
-                    { to: Address.parse(closeShortTx.to), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
-                    { to: Address.parse(sellSpotTx.to), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
-                );
+
 
             } else if (position.status === 'stasis' || position.status === 'stasis_pending_stake') {
                 // B. Cash Stasis -> Already Cash
