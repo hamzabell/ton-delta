@@ -25,9 +25,10 @@ export interface TradingPair {
   fundingRate: number;
   volume24h: number;
   liquidity: number;
-  risk: 'High' | 'Medium' | 'Low';
+  risk: 'High' | 'Medium' | 'Low' | 'Conservative';
   category: string;
   icon: string;
+  isHot?: boolean;
 }
 
 export interface MarketData {

@@ -11,7 +11,8 @@ export async function safetyCheckJob(job: Job) {
   const { positionId } = job.data;
 
   const position = await prisma.position.findUnique({
-    where: { id: positionId }
+    where: { id: positionId },
+    include: { user: true }
   });
 
   if (!position) return;
@@ -20,7 +21,8 @@ export async function safetyCheckJob(job: Job) {
   // NON-MOCK: Verify On-Chain
   try {
       const ticker = position.pairId.split('-')[0].toUpperCase();
-      const vaultAddr = position.vaultAddress || position.user.walletAddress!;
+      const vaultAddr = position.vaultAddress || position.user?.walletAddress;
+      if (!vaultAddr) throw new Error('No vault address found for position');
       
       // 1. Real Spot Base Amount
       let realSpotAmount = 0;

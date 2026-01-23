@@ -1,7 +1,7 @@
 
 import { TonClient, Address } from 'ton';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
-import { CURRENT_NETWORK } from '../workers/config'; // Adjust path if needed
+import { CURRENT_NETWORK } from './config'; // Adjust path if needed
 
 let client: TonClient | null = null;
 
@@ -40,4 +40,4 @@ export const getJettonBalance = async (minterAddress: string, ownerAddress: stri
     return result.stack.readBigNumber();
 };
 
-import { beginCell } from '@ton/core';
+import { beginCell } from 'ton';

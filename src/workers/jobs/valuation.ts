@@ -17,7 +17,8 @@ export const valuationJob = async (job: Job) => {
 
     try {
         const positions = await prisma.position.findMany({
-            where: { status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } }
+            where: { status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } },
+            include: { user: true }
         });
 
         let updatedCount = 0;
@@ -64,7 +65,8 @@ export const valuationJob = async (job: Job) => {
                      const perpMarkPrice = await firstValueFrom(getMarkPrice$(ticker));
                      
                      // 2. Verified On-Chain Amounts
-                     const vaultAddr = position.vaultAddress || position.user.walletAddress!;
+                     const vaultAddr = position.vaultAddress || position.user?.walletAddress;
+                     if (!vaultAddr) throw new Error('No vault address for position');
                      let realSpotAmount = 0;
                      if (ticker === 'TON') {
                          const bal = await getTonBalance(vaultAddr);
@@ -93,7 +95,7 @@ export const valuationJob = async (job: Job) => {
                              spotValue: spotValue,
                              perpValue: perpValue,
                              totalEquity: totalEquity,
-                             lastUpdated: new Date()
+
                          }
                      });
                      

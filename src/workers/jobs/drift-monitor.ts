@@ -10,7 +10,8 @@ export async function driftMonitorJob(job: Job) {
   const { positionId } = job.data;
   
   const position = await prisma.position.findUnique({
-    where: { id: positionId }
+    where: { id: positionId },
+    include: { user: true }
   });
 
   if (!position || position.status !== 'active') return;
@@ -24,7 +25,8 @@ export async function driftMonitorJob(job: Job) {
       // If pair is "TON-USDT", Spot is TON.
       // If pair is "DOGS-TON", Spot is DOGS.
       const ticker = position.pairId.split('-')[0].toUpperCase();
-      const vaultAddr = position.vaultAddress || position.user.walletAddress!;
+      const vaultAddr = position.vaultAddress || position.user?.walletAddress;
+      if (!vaultAddr) throw new Error('No vault address found for position');
       
       let realSpotAmount = 0;
       if (ticker === 'TON') {

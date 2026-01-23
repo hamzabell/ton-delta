@@ -79,7 +79,7 @@ export const buildOpenPositionPayload = async (params: { vaultAddress: string, a
         baseAsset,
         amount: toNano(params.amount),
         leverage: toNano(params.leverage), // SDK expects leverage in 9 decimals? Types says "bigint". Examples usually use toNano(lev).
-        direction: Direction.SHORT,
+        direction: Direction.short,
         traderAddress: Address.parse(params.vaultAddress)
     });
 
@@ -108,12 +108,14 @@ export const buildClosePositionPayload = async (params: { vaultAddress: string, 
         // Fetch full position
         const position = await sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset);
         if (!position) throw new Error("No open position found to close");
-        sizeToClose = position.currentPositionSize;
+        if (!position.shortPosition) throw new Error("No short position found to close");
+        
+        sizeToClose = position.shortPosition.positionData.size;
     }
 
     const txParams = await sdk.closePosition({
         baseAsset,
-        direction: Direction.SHORT,
+        direction: Direction.short,
         traderAddress: Address.parse(params.vaultAddress),
         size: sizeToClose
     });
@@ -136,14 +138,14 @@ export const buildAdjustMarginPayload = async (params: { vaultAddress: string, a
         txParams = await sdk.addMargin({
             baseAsset: params.symbol || 'TON', // Allow override
             amount: toNano(params.amount),
-            direction: Direction.SHORT,
+            direction: Direction.short,
             traderAddress: Address.parse(params.vaultAddress)
         });
     } else {
          txParams = await sdk.removeMargin({
             baseAsset: params.symbol || 'TON',
             amount: toNano(params.amount),
-            direction: Direction.SHORT,
+            direction: Direction.short,
             traderAddress: Address.parse(params.vaultAddress)
         });
     }
@@ -165,14 +167,23 @@ export const getPosition$ = (symbol: string, userAddress: string): Observable<{ 
         
         const posData = await sdk.getPositionAccountData(Address.parse(userAddress), baseAsset);
         
-        if (!posData) {
+        if (!posData || !posData.shortPosition) {
             // No position
             return { amount: 0, entryPrice: 0 };
         }
 
+        const sizeNano = posData.shortPosition.positionData.size;
+        const openNotionalNano = posData.shortPosition.positionData.openNotional;
+        
+        const size = Number(fromNano(sizeNano));
+        const openNotional = Number(fromNano(openNotionalNano));
+        
+        // Entry Price = Open Notional / Size
+        const entryPrice = size > 0 ? openNotional / size : 0;
+
         return {
-            amount: Number(fromNano(posData.currentPositionSize)),
-            entryPrice: Number(fromNano(posData.entryPrice)) 
+            amount: size,
+            entryPrice: entryPrice
         };
     })());
 };

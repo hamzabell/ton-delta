@@ -25,11 +25,11 @@ export function usePairs() {
   };
 }
 
-export function usePairsInfinite(limit = 5, sortBy = 'tvl', order = 'desc') {
+export function usePairsInfinite(limit = 5, sortBy = 'tvl', order = 'desc', filter = 'ALL') {
   const getKey = (pageIndex: number, previousPageData: PairsResponse) => {
     // If we have previous data and we've reached the last page, don't fetch anymore
     if (previousPageData && (previousPageData.currentPage >= previousPageData.totalPages)) return null;
-    return `/api/pairs?page=${pageIndex + 1}&limit=${limit}&sortBy=${sortBy}&order=${order}`; // SWR key
+    return `/api/pairs?page=${pageIndex + 1}&limit=${limit}&sortBy=${sortBy}&order=${order}&filter=${filter}`; // SWR key
   };
 
   const { data, error, size, setSize, isLoading, mutate } = useSWRInfinite<PairsResponse>(getKey, fetcher, {
@@ -37,10 +37,10 @@ export function usePairsInfinite(limit = 5, sortBy = 'tvl', order = 'desc') {
     parallel: false // Ensure sequential fetching if multiple pages needed (though we want to stop that)
   });
 
-  // Reset page size when sort params change
+  // Reset page size when sort/filter params change
   useEffect(() => {
     setSize(1);
-  }, [sortBy, order, setSize]);
+  }, [sortBy, order, filter, setSize]);
 
   // Flatten pairs and deduplicate by ID to prevent key errors
   const allPairs = data ? data.flatMap(batch => batch.pairs) : [];

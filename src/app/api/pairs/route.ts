@@ -69,19 +69,32 @@ export async function GET(request: Request) {
                     
                     const liquidity = parseFloat(p.liquidity || '0');
 
+
+                    const isConservative = (CATEGORY_MAP[base] === 'Stable' || CATEGORY_MAP[base] === 'DeFi') || liquidity > 1000000;
+                    const isMedium = liquidity > 100000 && liquidity <= 1000000;
+                    
+                    let riskLevel: 'Conservative' | 'Medium' | 'High' = 'High';
+                    if (isConservative) riskLevel = 'Conservative';
+                    else if (isMedium) riskLevel = 'Medium';
+
+                    const apr = (fundingRate * 24 * 365 * 100);
+                    // Hot logic: APR > 100% or Volume > 50k
+                    const isHot = apr > 100 || parseFloat(p.volume24h || '0') > 50000;
+
                     return {
                         id,
                         name: `${base} / ${quote}`,
                         spotToken: base,
                         baseToken: quote,
-                        apr: (fundingRate * 24 * 365 * 100), 
+                        apr, 
                         fundingRate: fundingRate * 100,
                         volume24h: parseFloat(p.volume24h || '0'),
                         liquidity, 
-                        risk: 'High', 
+                        risk: riskLevel, 
                         category: CATEGORY_MAP[base] || 'Meme',
                         icon: '⚡', 
-                        tvl: liquidity
+                        tvl: liquidity,
+                        isHot
                     };
                 }).filter(Boolean);
 
@@ -146,6 +159,16 @@ export async function GET(request: Request) {
                       apr = 10 + Math.random() * 20; 
                  }
 
+                const isConservative = (CATEGORY_MAP[symbol] === 'Stable' || CATEGORY_MAP[symbol] === 'DeFi') || liquidity > 1000000;
+                  const isMedium = liquidity > 100000 && liquidity <= 1000000;
+                  
+                  let riskLevel: 'Conservative' | 'Medium' | 'High' = 'High';
+                  if (isConservative) riskLevel = 'Conservative';
+                  else if (isMedium) riskLevel = 'Medium';
+                  
+                  // Hot logic: APR > 100% or Volume > 50k
+                  const isHot = apr > 100 || volTon > 50000;
+
                  const pair = {
                     id,
                     name,
@@ -155,10 +178,11 @@ export async function GET(request: Request) {
                     fundingRate: (apr / 365 / 24) / 100,
                     volume24h: volTon,
                     liquidity: liquidity,
-                    risk: CATEGORY_MAP[symbol] === 'Stable' || CATEGORY_MAP[symbol] === 'DeFi' ? 'Low' : 'High',
+                    risk: riskLevel,
                     category: CATEGORY_MAP[symbol] || 'Meme',
                     icon: tokenAsset.metadata.image || '?',
-                    tvl: liquidity
+                    tvl: liquidity,
+                    isHot
                 };
 
                 uniquePairsMap.set(id, pair);
@@ -190,10 +214,22 @@ export async function GET(request: Request) {
 
     const sortBy = url.searchParams.get('sortBy') || 'tvl'; 
     const sortOrder = url.searchParams.get('order') || 'desc';
+    const filter = url.searchParams.get('filter') || 'ALL';
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '5');
 
-    sortedPairs.sort((a: any, b: any) => {
+    // Filter Logic
+    let processedPairs = sortedPairs;
+    if (filter !== 'ALL') {
+        processedPairs = processedPairs.filter((p: any) => {
+            if (filter === 'HOT') return p.isHot;
+            if (filter === 'CONSERVATIVE') return p.risk === 'Conservative';
+            if (filter === 'HIGH_YIELD') return p.apr > 100;
+            return true;
+        });
+    }
+
+    processedPairs.sort((a: any, b: any) => {
         let valA, valB;
         if (sortBy === 'yield') {
             valA = a.apr;
@@ -205,22 +241,23 @@ export async function GET(request: Request) {
         return sortOrder === 'asc' ? valA - valB : valB - valA;
     });
     
-    // Total TVL (Always global)
-    const totalTVL = sortedPairs.reduce((acc: number, p: any) => acc + p.liquidity, 0);
+    // Total TVL (Show total of what's available or filtered? Let's keep Global TVL for now as 'Protocol TVL')
+    // const totalTVL = sortedPairs.reduce((acc: number, p: any) => acc + p.liquidity, 0);
+    const totalTVL = processedPairs.reduce((acc: number, p: any) => acc + p.liquidity, 0);
 
     // Pagination
     const start = (page - 1) * limit;
     const end = start + limit;
     
-    const paginatedPairs = sortedPairs.slice(start, end);
-    const totalPages = Math.ceil(sortedPairs.length / limit);
+    const paginatedPairs = processedPairs.slice(start, end);
+    const totalPages = Math.ceil(processedPairs.length / limit);
     const hasMore = page < totalPages;
 
     console.log('[PAIRS API] Returning:', {
         pairsCount: paginatedPairs.length,
         totalPages,
         currentPage: page,
-        totalPairs: sortedPairs.length
+        totalPairs: processedPairs.length
     });
 
     return NextResponse.json({ 

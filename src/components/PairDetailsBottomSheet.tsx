@@ -4,6 +4,8 @@ import { useState } from "react";
 import {
   X,
   Zap,
+  Shield,
+  Flame
 } from "lucide-react";
 import clsx from "clsx";
 import { usePair } from "@/hooks/usePairs";
@@ -83,7 +85,7 @@ export default function PairDetailsBottomSheet({
             <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4 flex justify-between items-center">
               <div>
                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-0.5">
-                  Target Yield
+                  Target Yield (APY)
                 </p>
                 <p className="text-2xl font-black text-white italic tracking-tighter">
                   {currentYield}
@@ -91,17 +93,43 @@ export default function PairDetailsBottomSheet({
               </div>
               <div className="text-right">
                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-0.5">
-                  Risk
+                  Risk Level
                 </p>
-                <p
-                  className={clsx(
-                    "text-sm font-black uppercase italic",
-                    pair.risk === "Low" ? "text-emerald-500" : "text-amber-500",
-                  )}
-                >
-                  {pair.risk}
-                </p>
+                <div className="flex items-center gap-1 justify-end">
+                    {pair.risk === 'Conservative' && <Shield className="w-3 h-3 text-emerald-500" />}
+                    {pair.isHot && <Flame className="w-3 h-3 text-orange-500" />}
+                    <p
+                    className={clsx(
+                        "text-sm font-black uppercase italic",
+                        pair.risk === "Conservative" ? "text-emerald-500" : 
+                        pair.risk === "Medium" ? "text-yellow-500" :
+                        "text-amber-500",
+                    )}
+                    >
+                    {pair.risk}
+                    </p>
+                </div>
               </div>
+            </div>
+
+            {/* Funding Rate Breakdown */}
+            <div className="grid grid-cols-4 gap-2">
+                <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mb-1">1h Funding</p>
+                    <p className="text-xs font-bold text-white">{(pair.fundingRate * 100).toFixed(4)}%</p>
+                </div>
+                <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mb-1">8h Funding</p>
+                    <p className="text-xs font-bold text-white">{(pair.fundingRate * 100 * 8).toFixed(3)}%</p>
+                </div>
+                <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mb-1">24h Funding</p>
+                    <p className="text-xs font-bold text-white">{(pair.fundingRate * 100 * 24).toFixed(2)}%</p>
+                </div>
+                <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mb-1">7d Est.</p>
+                    <p className="text-xs font-bold text-white md:text-[#E2FF00]">{(pair.fundingRate * 100 * 24 * 7).toFixed(1)}%</p>
+                </div>
             </div>
 
             {/* Main Input Section - Compact */}

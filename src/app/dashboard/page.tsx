@@ -49,14 +49,15 @@ export default function OpportunitiesPage() {
     setPullChange(0);
   };
   
-  // Fetch sorted data directly from backend
-  const { pairs, totalTVL, isLoading, loadMore, hasMore, isLoadingMore, refresh } = usePairsInfinite(5, sortBy, sortOrder);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'HOT' | 'CONSERVATIVE' | 'HIGH_YIELD'>('ALL');
+
+  // Fetch sorted data directly from backend with Filters
+  const { pairs, totalTVL, isLoading, loadMore, hasMore, isLoadingMore, refresh } = usePairsInfinite(5, sortBy, sortOrder, activeFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const loaderRef = useRef<HTMLDivElement>(null);
 
   // Client-side filtering only for Search (on the fetched chunks)
-  // Note: For perfect search with infinite scroll, backend search is better, 
-  // but for the "User Flow" request let's keep search client-side on fetched data for responsiveness if the list is small enough or just filters visible.
+  // We rely on backend for Category/Risk filtering now to fix Infinite Scroll
   const filteredPairs = pairs.filter(pair => 
     pair.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     pair.baseToken?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,30 +162,67 @@ export default function OpportunitiesPage() {
               />
             </div>
             
+            {/* Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                 <button 
+                    onClick={() => setActiveFilter('ALL')}
+                    className={cn(
+                        "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap",
+                        activeFilter === 'ALL' 
+                            ? "bg-white text-[#020617] border-white" 
+                            : "bg-white/5 text-white/40 border-white/5"
+                    )}
+                 >
+                    All
+                 </button>
+                 <button 
+                    onClick={() => setActiveFilter('HOT')}
+                    className={cn(
+                        "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap flex items-center gap-1",
+                        activeFilter === 'HOT' 
+                            ? "bg-orange-500 text-white border-orange-500" 
+                            : "bg-white/5 text-white/40 border-white/5"
+                    )}
+                 >
+                    <Flame className="w-3 h-3" /> Hot
+                 </button>
+                 <button 
+                    onClick={() => setActiveFilter('CONSERVATIVE')}
+                    className={cn(
+                        "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap flex items-center gap-1",
+                        activeFilter === 'CONSERVATIVE' 
+                            ? "bg-emerald-500 text-white border-emerald-500" 
+                            : "bg-white/5 text-white/40 border-white/5"
+                    )}
+                 >
+                    <Shield className="w-3 h-3" /> Conservative
+                 </button>
+            </div>
+
+
             {/* Sort Toggle */}
             <div className="flex items-center gap-2 justify-between">
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar h-8">
+                     <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest pl-1">
+                        Sort by:
+                     </p>
                     <button 
                         onClick={() => setSortBy('tvl')}
                         className={cn(
-                            "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap",
-                            sortBy === 'tvl' 
-                                ? "bg-white text-[#020617] border-white" 
-                                : "bg-white/5 text-white/40 border-white/5 hover:border-white/10"
+                            "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap",
+                             sortBy === 'tvl' ? "text-white" : "text-white/40 hover:text-white/60"
                         )}
                     >
-                        Sort by TVL
+                        TVL
                     </button>
                     <button 
                         onClick={() => setSortBy('yield')}
                         className={cn(
-                            "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap",
-                            sortBy === 'yield' 
-                                ? "bg-[#E2FF00] text-[#020617] border-[#E2FF00]" 
-                                : "bg-white/5 text-white/40 border-white/5 hover:border-white/10"
+                            "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap",
+                             sortBy === 'yield' ? "text-[#E2FF00]" : "text-white/40 hover:text-white/60"
                         )}
                     >
-                        Sort by Yield
+                        Yield
                     </button>
                 </div>
 
@@ -213,45 +251,71 @@ export default function OpportunitiesPage() {
             <button
               key={pair.id}
               onClick={() => setSelectedPairId(pair.id)}
-              className="group p-6 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.05] transition-all text-left w-full"
+              className="group p-5 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.05] transition-all text-left w-full active:scale-[0.99]"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 font-bold text-base">
-                  {pair.icon.startsWith('http') ? (
-                    <img src={pair.icon} alt={pair.name} className="w-8 h-8 rounded-full" />
-                  ) : (
-                    pair.icon
-                  )}
+                <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 font-bold text-base overflow-hidden">
+                    {pair.icon.startsWith('http') ? (
+                        <img src={pair.icon} alt={pair.name} className="w-full h-full object-cover" />
+                    ) : (
+                        pair.icon
+                    )}
+                    </div>
+                    {pair.isHot && (
+                        <div className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white p-0.5 rounded-full border-2 border-[#0B1221] z-10">
+                            <Flame className="w-3 h-3 fill-white" />
+                        </div>
+                    )}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">
-                    {pair.name}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[8px] text-white/20 font-bold uppercase tracking-widest">
-                      {pair.category}
-                    </span>
-                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">
-                       TVL: <span className="text-white/60">
-                         {pair.liquidity >= 1000000 
-                           ? `${(pair.liquidity / 1000000).toFixed(2)}M` 
-                           : pair.liquidity >= 1000 
-                             ? `${(pair.liquidity / 1000).toFixed(2)}k` 
-                             : pair.liquidity.toFixed(2)
-                         } TON
-                       </span>
-                    </span>
+                  <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-white leading-none">
+                        {pair.name}
+                      </h3>
+                      {pair.risk === 'Conservative' && (
+                           <Shield className="w-3 h-3 text-emerald-500 fill-emerald-500/20" />
+                      )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest leading-none mb-1">
+                            Funding (1h)
+                        </span>
+                        <span className="text-[10px] font-medium text-white/60 leading-none">
+                            { (pair.fundingRate * 100).toFixed(4) }%
+                        </span>
+                    </div>
+
+                    <div className="w-px h-6 bg-white/10" />
+
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest leading-none mb-1">
+                            TVL
+                        </span>
+                         <span className="text-[10px] font-medium text-white/60 leading-none">
+                           {pair.liquidity >= 1000000 
+                             ? `${(pair.liquidity / 1000000).toFixed(1)}M` 
+                             : pair.liquidity >= 1000 
+                               ? `${(pair.liquidity / 1000).toFixed(0)}k` 
+                               : pair.liquidity.toFixed(0)
+                           }
+                         </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="text-right">
-                <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mb-1">
-                  Target Yield
-                </p>
-                <p className="text-xl font-black text-white italic tracking-tighter leading-none">
-                  {pair.apr}%
-                </p>
+                <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/5 group-hover:bg-[#E2FF00] group-hover:border-[#E2FF00] transition-colors group-hover:text-black">
+                    <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest mb-0.5 group-hover:text-black/60">
+                    Yield
+                    </p>
+                    <p className="text-lg font-black italic tracking-tighter leading-none group-hover:text-black">
+                    {pair.apr.toFixed(0)}%
+                    </p>
+                </div>
               </div>
             </button>
           ))}
