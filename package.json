@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run worker\" \"NODE_OPTIONS='-r newrelic' next dev\"",
-    "build": "next build",
+    "build": "npx prisma generate && next build",
     "start": "concurrently \"npm run worker\" \"NODE_OPTIONS='-r newrelic' next start\"",
+    "postinstall": "prisma generate",
     "lint": "eslint",
     "worker": "ts-node --compiler-options '{\"module\":\"commonjs\"}' src/workers/index.ts",
     "test": "vitest",
