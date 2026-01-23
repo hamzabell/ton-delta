@@ -1,23 +1,35 @@
+import { Redis as UpstashRedis } from '@upstash/redis';
 import Redis from 'ioredis';
 import { redisConfig } from '../workers/config';
 
-// Create a centralized Redis client for the application
-const redis = new Redis({
-  ...(redisConfig as any),
-  // Add retry strategy for robustness
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  maxRetriesPerRequest: null // Required for BullMQ reuse in some contexts, helpful general practice
-});
+// Universal Redis Client Export using explicit singleton pattern
+// We favor Upstash HTTP client for Next.js Serverless/Edge environments (standard API routes)
+// We favor IORedis (TCP) for long-running processes (workers) or if specifically configured.
 
-redis.on('error', (err) => {
-    // Suppress connection Refused errors in non-production to avoid console spam if redis isn't running
-    if (process.env.NODE_ENV === 'development' && err.message.includes('ECONNREFUSED')) {
-        return; 
-    }
-    console.error('[Redis] Client Error:', err);
-});
+let redisClient: any;
 
-export default redis;
+// Check if we should use Upstash HTTP
+const useUpstashHttp = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (useUpstashHttp) {
+    redisClient = new UpstashRedis({
+        url: process.env.UPSTASH_REDIS_REST_URL!,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+} else {
+    // Fallback to IORedis (TCP)
+    redisClient = new Redis(process.env.REDIS_URL || {
+        ...(redisConfig as any),
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
+        maxRetriesPerRequest: null
+    });
+
+    redisClient.on('error', (err: any) => {
+        if (process.env.NODE_ENV === 'development' && err?.message?.includes('ECONNREFUSED')) {
+            return;
+        }
+        console.error('[Redis] Client Error:', err);
+    });
+}
+
+export default redisClient;
