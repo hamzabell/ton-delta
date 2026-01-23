@@ -13,13 +13,9 @@ datasource db {
 
 model User {
   id             String   @id @default(uuid())
-  telegramId     BigInt   @unique
   username       String?
   walletAddress  String?
   isFoundingMember Boolean @default(false)
-  referralCode   String   @unique
-  referredBy     String?  // ID of the referrer
-
   deposits       Deposit[]
   positions      Position[]
 }

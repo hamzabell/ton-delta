@@ -75,10 +75,8 @@ export async function POST(request: Request) {
                  data: {
                      id: userId, // Use wallet addr as ID
                      walletAddress: userId,
-                     // Generate random referral code
-                     referralCode: `REF-${userId.slice(0, 4)}-${Date.now().toString().slice(-4)}`,
-                     // Generate mock unique Telegram ID (using timestamp to avoid collision)
-                     telegramId: BigInt(Date.now()),
+                     // Properties removed in refactor
+
                      username: 'WalletUser'
                  }
              });
@@ -127,6 +125,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error(error);
+    await Logger.error('API', 'POSITION_CREATION_FAILED', undefined, { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
