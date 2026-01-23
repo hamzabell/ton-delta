@@ -31,7 +31,7 @@ export default function StasisStrategyBottomSheet({
     },
     {
       id: "STAKE",
-      name: &quot;Yield Hunter&quot;,
+      name: "Yield Hunter",
       emoji: "🌾",
       icon: Sprout,
       desc: "Auto-swap to Liquid Staking (stTON) to earn ~4% APY while waiting. Note: Incurs ~0.6% swap fees.",

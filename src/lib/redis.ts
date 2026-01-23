@@ -23,11 +23,15 @@ if (useUpstashHttp) {
     });
 } else {
     // Fallback to IORedis (TCP)
-    redisClient = new Redis(process.env.REDIS_URL || {
-        ...redisConfig,
-        retryStrategy: (times: number) => Math.min(times * 50, 2000),
-        maxRetriesPerRequest: null
-    });
+    if (process.env.REDIS_URL) {
+        redisClient = new Redis(process.env.REDIS_URL);
+    } else {
+        redisClient = new Redis({
+            ...redisConfig,
+            retryStrategy: (times: number) => Math.min(times * 50, 2000),
+            maxRetriesPerRequest: null
+        });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     redisClient.on('error', (err: any) => {
