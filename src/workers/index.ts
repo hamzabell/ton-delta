@@ -6,19 +6,13 @@ import { strategyJob } from './jobs/strategy';
 import { valuationJob } from './jobs/valuation';
 import { processEntryJob } from './jobs/entry';
 
-import { prisma } from '../lib/prisma';
+import { Logger } from '../services/logger';
 
 console.log('[Worker] Starting Watchman Engine...');
 
 // Log System Event
-prisma.auditLog.create({
-    data: {
-        level: 'INFO',
-        component: 'System',
-        action: 'WATCHMAN_ENGINE_STARTED',
-        details: { timestamp: new Date().toISOString() }
-    }
-}).catch(e => console.error('Failed to log startup:', e));
+// Log System Event
+Logger.info('System', 'WATCHMAN_ENGINE_STARTED', undefined, { timestamp: new Date().toISOString() });
 
 const watchmanWorker = new Worker('watchman', async (job) => {
   switch (job.name) {

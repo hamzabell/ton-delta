@@ -26,10 +26,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' },
       include: { 
         user: true,
-        auditLogs: {
-            orderBy: { timestamp: 'desc' },
-            take: 20
-        }
+
       } 
     });
 

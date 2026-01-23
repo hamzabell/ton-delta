@@ -12,9 +12,7 @@ const { prismaMock } = vi.hoisted(() => {
       user: {
         findFirst: vi.fn(),
       },
-      auditLog: {
-        create: vi.fn(),
-      }
+
     }
   }
 });

@@ -102,7 +102,6 @@ model Position {
   updatedAt       DateTime @updatedAt
   
   fundingEvents   FundingEvent[]
-  auditLogs       AuditLog[]
 }
 
 model FundingEvent {
@@ -116,16 +115,7 @@ model FundingEvent {
   position    Position @relation(fields: [positionId], references: [id])
 }
 
-model AuditLog {
-  id          String    @id @default(uuid())
-  timestamp   DateTime  @default(now())
-  level       String    // "INFO", "WARN", "ERROR"
-  component   String    // "Watchman", "Risk", "Funding", "StonFi"
-  action      String    // "ENTER_STASIS", "PAY_FEE", "REBALANCE"
-  details     Json?     // Detailed context
-  positionId  String?
-  position    Position? @relation(fields: [positionId], references: [id])
-}
+
 
 model JobRun {
   id             String    @id @default(uuid())

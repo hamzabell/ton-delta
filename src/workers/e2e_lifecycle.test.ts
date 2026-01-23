@@ -20,9 +20,7 @@ vi.mock('@/lib/prisma', () => ({
         fundingEvent: {
             create: vi.fn(),
         },
-        auditLog: {
-            create: vi.fn(),
-        }
+
     }
 }));
 

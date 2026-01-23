@@ -582,15 +582,8 @@ export const ExecutionService = {
             const result = await firstValueFrom(sendTransactions$(txs));
             
             // Log for Audit
-            await prisma.auditLog.create({
-                data: {
-                    level: 'INFO',
-                    component: 'Execution',
-                    action: 'REBALANCE_EXECUTED',
-                    positionId,
-                    details: { amount, isDeposit, txHash: `seqno_${result.seqno}` }
-                }
-            });
+            // Log for Audit
+            Logger.info('Execution', 'REBALANCE_EXECUTED', positionId, { amount, isDeposit, txHash: `seqno_${result.seqno}` });
 
         } catch (error: unknown) {
              const err = error instanceof Error ? error : new Error(String(error));

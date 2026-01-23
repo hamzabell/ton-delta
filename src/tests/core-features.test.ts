@@ -16,9 +16,7 @@ vi.mock('../lib/prisma', () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    auditLog: {
-        create: vi.fn(),
-    },
+
     $transaction: vi.fn((ops) => Promise.resolve(ops)),
   }
 }));
