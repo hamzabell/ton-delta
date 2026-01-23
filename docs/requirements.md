@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-**Pamelo.finance** is an institutional-grade "refining" protocol for the TON ecosystem, designed to convert retail liquidity from high-volatility assets into stable, delta-neutral yield. By utilizing a **Cash-and-Carry (Basis Trading)** model, the protocol extracts Funding Rate yields while neutralizing underlying price risk through a tri-pillar integration of Storm Trade, swap.coffee, and STON.fi.
+**Pamelo.finance** is an institutional-grade "refining" protocol for the TON ecosystem, designed to convert retail liquidity from high-volatility assets into stable, delta-neutral yield. By utilizing a **Cash-and-Carry (Basis Trading)** model, the protocol extracts Funding Rate yields while neutralizing underlying price risk through a dual-pillar integration of Storm Trade and STON.fi.
 
 ---
 
@@ -36,17 +36,10 @@ The "Watchman" is a background worker architecture that monitors the following m
 
 ### 3.2 Integration Stack
 
-| Pillar        | Provider        | Role in Architecture                                     |
-| ------------- | --------------- | -------------------------------------------------------- |
-| **Execution** | **swap.coffee** | Smart router for spot entries () and emergency exits (). |
-
-|
-| **Hedging** | **Storm Trade** | Liquidity source for 1x leverage perpetual short positions ().
-
-|
-| **Productivity** | **STON.fi** | Vault infrastructure for liquid staking rewards during Stasis Mode.
-
-|
+| Pillar        | Provider        | Role in Architecture                                                     |
+| ------------- | --------------- | ------------------------------------------------------------------------ |
+| **Execution** | **STON.fi**     | DEX for spot entries (), emergency exits (), and liquid staking (tsTON). |
+| **Hedging**   | **Storm Trade** | Liquidity source for 1x leverage perpetual short positions ().           |
 
 ---
 
@@ -58,7 +51,7 @@ When funding rates turn negative ($F < 0$) and $F_{ema} < -0.05\%$, the Redis wo
 
 **A. Safe Harbor (Cash)** (Default)
 
-1.  **Atomic Liquidation:** Close Short + Sell Spot via swap.coffee/STON.fi.
+1.  **Atomic Liquidation:** Close Short + Sell Spot via STON.fi.
 2.  **Cash Sweep:** Vault holds 100% TON (0% Risk, 0% APY).
 3.  **Use Case:** Short-term market choppiness (< 1 week).
 

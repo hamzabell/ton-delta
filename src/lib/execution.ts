@@ -7,7 +7,8 @@ import { buildClosePositionPayload, buildOpenPositionPayload } from './storm';
 import { stonfi } from './stonfi';
 import { Buffer } from 'buffer';
 import { wrapWithKeeperRequest } from './w5-utils';
-import { Address, Cell, toNano } from '@ton/core';
+import { Address, Cell, toNano, fromNano } from '@ton/core';
+import { getTonBalance } from './onChain';
 
 /**
  * Service to handle actual on-chain execution of critical strategy actions.
@@ -37,9 +38,19 @@ export const ExecutionService = {
             }
 
             // Strategy: 50% Spot, 50% Margin (1x Short)
-            const capital = position.totalEquity;
-            const spotAlloc = capital * 0.5;
-            const marginAlloc = capital * 0.5;
+            // NON-MOCK: Fetch actual on-chain balance
+            const vaultAddrStr = position.vaultAddress || position.user.walletAddress!;
+            const balanceNano = await getTonBalance(vaultAddrStr);
+            const balance = Number(fromNano(balanceNano));
+            
+            // Safety: Leave 1.0 TON for gas
+            const safeBalance = balance - 1.0;
+            if (safeBalance <= 0) {
+                 throw new Error(`Insufficient Vault Balance: ${balance} TON`);
+            }
+
+            const spotAlloc = safeBalance * 0.5;
+            const marginAlloc = safeBalance * 0.5;
 
             const ticker = position.pairId.split('-')[0].toUpperCase();
 
@@ -54,7 +65,7 @@ export const ExecutionService = {
 
             // 2. Open Short with remaining 50%
             const openShortTx = await buildOpenPositionPayload({
-                 vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                 vaultAddress: position.vaultAddress || position.user.walletAddress!, // Use actual vault
                  amount: marginAlloc.toFixed(2),
                  leverage: 1
             });
@@ -121,7 +132,7 @@ export const ExecutionService = {
                 Logger.info('ExecutionService', 'Panic Unwind: Liquidating Active Position...', positionId);
                 
                 const closeShortTx = await buildClosePositionPayload({
-                     vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                     vaultAddress: position.vaultAddress || position.user.walletAddress!,
                      positionId: position.id 
                 });
 
@@ -253,7 +264,7 @@ export const ExecutionService = {
 
              // 1. Build Close Short Payload
              const closeShortTx = await buildClosePositionPayload({
-                 vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c', // Should be dynamic
+                 vaultAddress: position.vaultAddress || position.user.walletAddress!, 
                  positionId: position.id 
              });
 
@@ -316,14 +327,21 @@ export const ExecutionService = {
             if (!position) throw new Error("Position not found");
 
             // Build Swap: TON -> tsTON
-            // We blindly swap 99% of available TON to tsTON, leaving gas.
-            // Since we don't track balance in DB in real-time, we assume Full Balance for this step.
-            // Note: In prod, query vault balance first.
+            // NON-MOCK: Use On-Chain Balance
+            const vaultAddrStr = position.vaultAddress || position.user.walletAddress!;
+            const balanceNano = await getTonBalance(vaultAddrStr);
+            // Leave 0.5 TON for gas
+            const swapAmountNano = balanceNano - toNano('0.5');
+            
+            if (swapAmountNano <= BigInt(0)) {
+                 throw new Error(`Insufficient Balance for Staking: ${fromNano(balanceNano)} TON`);
+            }
+
             const stakeTx = await stonfi.buildSwapTx({
-                 userWalletAddress: position.vaultAddress || position.user.walletAddress!,
+                 userWalletAddress: vaultAddrStr,
                  fromToken: 'TON', 
                  toToken: 'tsTON',
-                 amount: toNano((position.totalEquity * 0.99).toFixed(2)).toString(), // Estimate
+                 amount: swapAmountNano.toString(), 
                  minOutput: '1'
             });
 
@@ -414,7 +432,7 @@ export const ExecutionService = {
 
              const amountForMargin = position.perpValue || 100;
              const openShortTx = await buildOpenPositionPayload({
-                 vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                 vaultAddress: position.vaultAddress || position.user.walletAddress!,
                  amount: amountForMargin.toString(),
                  leverage: 1
              });
@@ -460,7 +478,7 @@ export const ExecutionService = {
 
             // 1. Build Rebalance Payload
             const rebalanceTx = await buildAdjustMarginPayload({
-                vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                vaultAddress: position.vaultAddress || position.user.walletAddress!,
                 amount: amount.toFixed(2),
                 isDeposit
             });
@@ -518,26 +536,22 @@ export const ExecutionService = {
             if (delta > 0) {
                 // Short is too small (Under-hedged). Open more Short.
                  txPayload = await buildOpenPositionPayload({
-                     vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                     vaultAddress: position.vaultAddress || position.user.walletAddress!,
                      amount: absDelta.toFixed(2),
                      leverage: 1
                 });
             } else {
                 // Short is too big (Over-hedged). Close some Short.
-                // Note: buildClosePositionPayload currently closes FULL position in our mock. 
-                // We'll assume for now it handles partials or we just close full and re-open (inefficient).
-                // For MVP, we'll try to use the same payload, assuming the backend supports partials via 'amount' arg if we added it.
-                // Refactoring: The mock buildClosePositionPayload doesn't take amount.
-                // So we'll skip partial close for now and just log warning if delta is small
                 if (Math.abs(delta) < 10) { 
                     Logger.info('ExecutionService', 'Skipping small partial close rebalance', positionId);
                     return; 
                 }
                 
-                // Fallback: If heavy drift, Close Full
-                 txPayload = await buildClosePositionPayload({
-                     vaultAddress: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
-                     positionId: position.id
+                // Partial Close
+                txPayload = await buildClosePositionPayload({
+                     vaultAddress: position.vaultAddress || position.user.walletAddress!,
+                     positionId: position.id,
+                     amount: absDelta.toFixed(2) // Reduce by specific amount
                 });
             }
 

@@ -28,29 +28,50 @@ export const stonfi = {
      * @param baseToken Address of base token (e.g., TON)
      * @param quoteToken Address of quote token (e.g., USDT)
      */
+    /**
+     * Get Spot Price for a Pair on Ston.fi via Public API
+     * @param baseToken Address of base token (e.g., TON)
+     * @param quoteToken Address of quote token (e.g., USDT)
+     */
     getSpotPrice$: (baseToken: string, quoteToken: string): Observable<number> => {
-        return from(getClient()).pipe(
-            switchMap(client => {
-                const routerContract = new DEX.v1.Router(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    Address.parse(CURRENT_NETWORK.stonRouter) as any
-                );
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const _router = client.open(routerContract as any);
-                
-                // Simulate Price Fetch (SDK v1 Router doesn't expose getExpectedExchange directly)
-                return from(Promise.reject("Price fetch via Router not implemented in v1 SDK"));
-            }),
-            map(expected => {
-                // Return implied price
-                return Number(expected) / 1e9; // Simplified
-            }),
-            catchError(err => {
-                console.warn('[StonFi] Price fetch failed, returning mock 5.50', err);
-                return of(5.50);
-            })
-        );
+        return from((async () => {
+            try {
+                // Helper to normalize "TON" string to pTON address or native representation
+                // Ston.fi API uses standard jetton addresses. 
+                // For TON, it usually tracks pTON: EQBnGWMCf3-FZZq1W4M6-RfpSTBtQS772H-100UIKsviP_84 
+                // OR it might have a special address.
+                // Let's rely on what addresses are passed.
+                // For TON, it usually tracks pTON: EQBnGWMCf3-FZZq1W4M6-RfpSTBtQS772H-100UIKsviP_84 
+                // We map 'TON' to this address for API lookup.
+                const pTON = 'EQBnGWMCf3-FZZq1W4M6-RfpSTBtQS772H-100UIKsviP_84';
+                const resolveParams = (t: string) => t === 'TON' ? pTON : t;
+
+                const base = resolveParams(baseToken);
+                const quote = resolveParams(quoteToken);
+
+                // Fetch Asset Info
+                // Endpoint: https://api.ston.fi/v1/assets/{address}
+                const [baseData, quoteData] = await Promise.all([
+                    fetch(`https://api.ston.fi/v1/assets/${base}`).then(r => r.json()),
+                    fetch(`https://api.ston.fi/v1/assets/${quote}`).then(r => r.json())
+                ]);
+
+                const basePrice = baseData?.asset?.dex_usd_price;
+                const quotePrice = quoteData?.asset?.dex_usd_price;
+
+                if (!basePrice || !quotePrice) {
+                    throw new Error(`Price data missing for ${baseToken} or ${quoteToken}`);
+                }
+
+                return Number(basePrice) / Number(quotePrice);
+
+            } catch (err) {
+                 console.warn('[StonFi] Price fetch failed:', err);
+                 // Fallback: If we can't get external price, we essentially fail the safety check safely (e.g. don't liquidate erroneously)
+                 // But we throw so it retries.
+                 throw err;
+            }
+        })());
     },
 
     /**

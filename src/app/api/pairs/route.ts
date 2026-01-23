@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const now = Date.now();
     const url = new URL(request.url);
     const forceRefresh = url.searchParams.get('force') === 'true';
-    let uniquePairs = cachedPairs;
+    const uniquePairs = cachedPairs;
 
     // Refresh cache if empty, expired, or force refresh requested
     if (!cachedPairs.length || (now - lastFetchTime) > CACHE_DURATION || forceRefresh) {

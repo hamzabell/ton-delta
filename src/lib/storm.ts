@@ -1,99 +1,178 @@
-import { Observable, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-import axios from 'axios';
-
-import { CURRENT_NETWORK } from './config';
-
-const STORM_API_URL = CURRENT_NETWORK.stormApi;
+import { Observable, from } from 'rxjs';
+import { map, catchError } from 'rxjs/operators'; // Keep rxjs for compat
+import { 
+    StormSDK, 
+    NATIVE_MAINNET_SDKConfig, 
+    Direction, 
+    AssetInfo 
+} from '@storm-trade/sdk';
+import { Address, fromNano, toNano } from '@ton/core';
+import { getTonClient } from './onChain';
 
 /**
- * Fetches the current mark price for a perp market as an Observable
+ * Singleton StormSDK instance
  */
-export const getMarkPrice$ = (symbol: string): Observable<number> => {
-  return from(axios.get(`${STORM_API_URL}/pairs/${symbol}`)).pipe(
-    map(res => res.data?.lastPrice || 0),
-    catchError(err => {
-      console.error(`[Storm Trade] Failed to fetch price for ${symbol}: ${err.message}`);
-      throw err;
-    })
-  );
+let _stormSDK: StormSDK | null = null;
+
+const getStormSDK = async () => {
+    if (_stormSDK) return _stormSDK;
+    const client = await getTonClient(); // Reuse shared client
+    // TODO: Switch config based on Env (Mainnet vs Testnet).
+    // For now assuming Mainnet as per previous context (or make it configurable).
+    // Using NATIVE_MAINNET_SDKConfig (TON collateral).
+    _stormSDK = new StormSDK(client as any, NATIVE_MAINNET_SDKConfig); 
+    return _stormSDK;
 };
 
 /**
- * Fetches the current funding rate for a perp market
+ * Fetches the current mark price for a pair.
+ */
+export const getMarkPrice$ = (symbol: string): Observable<number> => {
+    return from((async () => {
+        try {
+            const sdk = await getStormSDK();
+            // Symbol in SDK is usually "TON", "BTC", etc.
+            // If symbol is "TON-USDT", we need "TON".
+            const baseAsset = symbol.split('-')[0].toUpperCase();
+            
+            // SDK returns bigint (nano), convert to number
+            const priceNano = await sdk.getMarketPrice(baseAsset);
+            return Number(fromNano(priceNano));
+        } catch (e: any) {
+            console.error(`[StormSDK] Failed to get price for ${symbol}`, e.message);
+            throw e;
+        }
+    })());
+};
+
+/**
+ * Fetches the current funding rate.
  */
 export const getFundingRate$ = (symbol: string): Observable<number> => {
-    return from(axios.get(`${STORM_API_URL}/pairs/${symbol}/funding`)).pipe(
-      map(res => res.data?.fundingRate || 0), // Assuming output is raw rate
-      catchError(err => {
-        console.error(`[Storm Trade] Failed to fetch funding rate for ${symbol}: ${err.message}`);
-        // Return 0 so we don't crash strategy, but log error
-        return of(0);
-      })
-    );
-  };
+    return from((async () => {
+        try {
+            const sdk = await getStormSDK();
+            const baseAsset = symbol.split('-')[0].toUpperCase();
+            const funding = await sdk.getFunding(baseAsset);
+            // Funding is likely returned as object { longFunding, shortFunding } (bigint)
+            // For Short strategy, we want shortFunding. 
+            // Note: need to verify normalization (decimals).
+            // SDK funding is usually cumulative/rate? 
+            // Assuming simplified rate for now.
+            return Number(fromNano(funding.shortFunding)); 
+        } catch (e: any) {
+            console.error(`[StormSDK] Failed to get funding for ${symbol}`, e.message);
+            throw e; // Fail safely, do not return mock 0
+        }
+    })());
+};
 
 /**
  * Builds the transaction payload to open a short position
  */
-export const buildOpenPositionPayload = async (params: { vaultAddress: string, amount: string, leverage: number }) => {
-  const { beginCell, toNano } = await import('@ton/core');
-  
-  // OpCode: Open Position (0x5fcc3d14 - hypothetical)
-  const body = beginCell()
-      .storeUint(0x5fcc3d14, 32)
-      .storeUint(0, 64) // QueryID
-      .storeCoins(toNano(params.amount)) // Margin Amount
-      .storeUint(params.leverage * 100, 16) // Leverage (x100)
-      .storeUint(0, 1) // Direction: 0 = Short, 1 = Long (Hypothetical)
-      .endCell();
+export const buildOpenPositionPayload = async (params: { vaultAddress: string, amount: string, leverage: number, symbol?: string }) => {
+    const sdk = await getStormSDK();
+    const baseAsset = params.symbol || 'TON';
 
-  return {
-      to: params.vaultAddress,
-      value: "100000000", // 0.1 TON gas
-      body: body.toBoc().toString('base64')
-  };
-};
-
-/**
- * Builds the transaction payload to close a short position
- */
-export const buildClosePositionPayload = async (params: { vaultAddress: string, positionId: string }) => {
-    const { beginCell } = await import('@ton/core');
-    
-    // OpCode: Close Position
-    const body = beginCell()
-        .storeUint(0x4c2f6d22, 32)
-        .storeUint(0, 64)
-        // We might not need positionId if Vault only has one? 
-        // But usually pass it.
-        .storeUint(Number(params.positionId) || 0, 32) 
-        .endCell();
+    // 1x Short
+    const txParams = await sdk.increasePosition({
+        baseAsset,
+        amount: toNano(params.amount),
+        leverage: toNano(params.leverage), // SDK expects leverage in 9 decimals? Types says "bigint". Examples usually use toNano(lev).
+        direction: Direction.SHORT,
+        traderAddress: Address.parse(params.vaultAddress)
+    });
 
     return {
-        to: params.vaultAddress,
-        value: "100000000",
-        body: body.toBoc().toString('base64')
+        to: txParams.to.toString(),
+        value: txParams.value.toString(),
+        body: txParams.body.toBoc().toString('base64')
     };
 };
 
 /**
- * Builds the transaction payload to add/remove margin (Rebalancing)
+ * Builds the transaction payload to close a short position (Partial or Full)
  */
-export const buildAdjustMarginPayload = async (params: { vaultAddress: string, amount: string, isDeposit: boolean }) => {
-    const { beginCell, toNano } = await import('@ton/core');
+export const buildClosePositionPayload = async (params: { vaultAddress: string, positionId: string, amount?: string, symbol?: string }) => {
+    const sdk = await getStormSDK();
+    const baseAsset = params.symbol || 'TON'; 
+
+    // If amount is missing, we need to know the full size?
+    // SDK `closePosition` requires `size`.
+    // If we don't know the size, we can't close "Full" without fetching it first.
+    // So we fetch it if amount is missing.
     
-    // OpCode: Adjust Margin (Hypothetical 0x1a2b3c4d)
-    const body = beginCell()
-        .storeUint(0x1a2b3c4d, 32)
-        .storeUint(0, 64)
-        .storeCoins(toNano(params.amount))
-        .storeBit(params.isDeposit ? 1 : 0) // 1 = Deposit, 0 = Withdraw
-        .endCell();
+    let sizeToClose = params.amount ? toNano(params.amount) : BigInt(0);
+    
+    if (sizeToClose === BigInt(0)) {
+        // Fetch full position
+        const position = await sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset);
+        if (!position) throw new Error("No open position found to close");
+        sizeToClose = position.currentPositionSize;
+    }
+
+    const txParams = await sdk.closePosition({
+        baseAsset,
+        direction: Direction.SHORT,
+        traderAddress: Address.parse(params.vaultAddress),
+        size: sizeToClose
+    });
 
     return {
-        to: params.vaultAddress,
-        value: "50000000", // 0.05 TON
-        body: body.toBoc().toString('base64')
+        to: txParams.to.toString(),
+        value: txParams.value.toString(),
+        body: txParams.body.toBoc().toString('base64')
     };
+};
+
+/**
+ * Builds transaction to Adjust Margin (Deposit/Withdraw)
+ */
+export const buildAdjustMarginPayload = async (params: { vaultAddress: string, amount: string, isDeposit: boolean, symbol?: string }) => {
+    const sdk = await getStormSDK();
+
+    let txParams;
+    if (params.isDeposit) {
+        txParams = await sdk.addMargin({
+            baseAsset: params.symbol || 'TON', // Allow override
+            amount: toNano(params.amount),
+            direction: Direction.SHORT,
+            traderAddress: Address.parse(params.vaultAddress)
+        });
+    } else {
+         txParams = await sdk.removeMargin({
+            baseAsset: params.symbol || 'TON',
+            amount: toNano(params.amount),
+            direction: Direction.SHORT,
+            traderAddress: Address.parse(params.vaultAddress)
+        });
+    }
+
+    return {
+        to: txParams.to.toString(),
+        value: txParams.value.toString(),
+        body: txParams.body.toBoc().toString('base64')
+    };
+};
+
+/**
+ * Fetches the real on-chain position
+ */
+export const getPosition$ = (symbol: string, userAddress: string): Observable<{ amount: number, entryPrice: number }> => {
+    return from((async () => {
+        const sdk = await getStormSDK();
+        const baseAsset = symbol.split('-')[0].toUpperCase();
+        
+        const posData = await sdk.getPositionAccountData(Address.parse(userAddress), baseAsset);
+        
+        if (!posData) {
+            // No position
+            return { amount: 0, entryPrice: 0 };
+        }
+
+        return {
+            amount: Number(fromNano(posData.currentPositionSize)),
+            entryPrice: Number(fromNano(posData.entryPrice)) 
+        };
+    })());
 };

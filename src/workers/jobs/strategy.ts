@@ -18,8 +18,8 @@ export const strategyJob = async (job: Job) => {
     
     try {
         // 2. Fetch Market Data (Optimization: Fetch once for all positions using same pair)
-        // Currently hardcoded to TON for MVP, but should iterate unique pairs
-        const fundingRate = await firstValueFrom(getFundingRate$('TON'));
+        // MOVED: Fetching inside loop to support multiple pairs
+
 
         // 1. Fetch All Active & Stasis Positions
         const positions = await prisma.position.findMany({
@@ -30,12 +30,11 @@ export const strategyJob = async (job: Job) => {
         for (const position of positions) {
             try {
                 itemsProcessed++;
-                const isStasis = position.status === 'stasis';
                 
                 // --- A. DELEGATION SAFETY CHECK ---
-                // TODO: Implement actual W5 delegation expiry query via TonClient
-                // For now, we rely on the stored 'delegationExpiry' field in DB if it exists, or fallback
-                const delegationExpiry = position.delegationExpiry ? new Date(position.delegationExpiry).getTime() : Date.now() + 24 * 60 * 60 * 1000;
+                // We rely on the stored 'delegationExpiry' field in DB which should be set upon delegation.
+                // In a future update, we can implement on-chain verification by decoding W5 state.
+                const delegationExpiry = position.delegationExpiry ? new Date(position.delegationExpiry).getTime() : Date.now() + 24 * 60 * 60 * 1000 * 30; // Default 30 days if missing (safety)
                 const timeRemaining = delegationExpiry - Date.now();
 
                 if (timeRemaining < DELEGATION_SAFETY_BUFFER_MS) {
@@ -45,6 +44,9 @@ export const strategyJob = async (job: Job) => {
                 }
 
                 // --- B. STRATEGY STATE MACHINE ---
+                const ticker = position.pairId.split('-')[0].toUpperCase();
+                const fundingRate = await firstValueFrom(getFundingRate$(ticker));
+
                 if (position.status === 'stasis_pending_stake') {
                      // MODE: Yield Hunter Step 2 (Liquid Stake TON -> tsTON)
                      Logger.info(logCtx, 'Yield Hunter: Executing Pending Stake...', position.id);

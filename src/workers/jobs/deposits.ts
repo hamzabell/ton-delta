@@ -6,13 +6,17 @@ interface DepositPayload {
   strategyId: string;
   amount: number;
   txHash: string;
+  vaultAddress: string; // REQUIRED: The Non-Custodial W5 Vault Address
 }
 
 export const processDepositJob = async (job: Job) => {
-  const { userId, strategyId, amount, txHash } = job.data as DepositPayload;
+  const { userId, strategyId, amount, txHash, vaultAddress } = job.data as DepositPayload;
   const pairId = strategyId; // Map strategy to pair
 
-  console.log(`[Deposit] Processing deposit of $${amount} for User ${userId}`);
+  // SAFETY: We strictly handle public addresses only. 
+  // We DO NOT process or store private keys or mnemonics in this worker.
+  
+  console.log(`[Deposit] Processing deposit of $${amount} for User ${userId}. Vault: ${vaultAddress}`);
 
   try {
       // 1. Log Deposit
@@ -36,6 +40,8 @@ export const processDepositJob = async (job: Job) => {
               data: {
                   totalEquity: { increment: amount },
                   principalFloor: { increment: amount }, // Assuming full amount adds to floor
+                  // Update vault address if it was missing or changed (e.g. re-deploy)
+                  vaultAddress: vaultAddress || existingPosition.vaultAddress 
               }
           });
       } else {
@@ -53,7 +59,7 @@ export const processDepositJob = async (job: Job) => {
                   currentPrice: 1,
                   fundingRate: 0,
                   driftCoefficient: 0,
-                  vaultAddress: '' // No vault for legacy deposits
+                  vaultAddress: vaultAddress || '' 
               }
           });
       }

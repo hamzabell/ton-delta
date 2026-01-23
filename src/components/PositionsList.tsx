@@ -30,7 +30,7 @@ export default function PositionsList({ onRefetch }: PositionsListProps) {
 
   // Reset pagination when filter changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setVisibleCount(ITEMS_PER_PAGE);
   }, [selectedPairId]);
 

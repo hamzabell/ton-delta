@@ -1,60 +1,72 @@
 import { Job } from 'bullmq';
-import ccxt from 'ccxt';
 import { prisma } from '../../lib/prisma';
-
-// Mock Exchange for MVP to avoid needing real API keys immediately
-const mockExchange = {
-  fetchFundingRate: async (_symbol: string) => {
-    // Return a random positive funding rate between 0.01% and 0.05%
-    return {
-      fundingRate: 0.0001 + Math.random() * 0.0004,
-      timestamp: Date.now(),
-    };
-  }
-};
+import { getFundingRate$ } from '../../lib/storm';
+import { firstValueFrom } from 'rxjs';
+import { Logger } from '../../services/logger';
 
 export const processFundingJob = async (job: Job) => {
-  console.log(`[Funding] Harvesting yields for active strategies...`);
+    const logCtx = 'funding-job';
+    Logger.info(logCtx, `Starting funding cycle...`, job.id);
 
-  // 1. Get all active strategies
-  // Note: specific Prisma types might need adjustment depending on schema state, using 'any' for loose coupling in this step
-  const strategies = await prisma.strategy.findMany();
-
-  for (const strategy of strategies) {
     try {
-      // 2. Fetch Funding Rate from Binance (or Map ticker to Symbol)
-      // e.g. DOGE -> DOGE/USDT:USDT
-      const rateData = await mockExchange.fetchFundingRate(strategy.cexSymbol || 'DOGE/USDT:USDT');
-      
-      const rate = rateData.fundingRate;
-      const annualRate = rate * 3 * 365 * 100; // 3 payments per day * 365 days * percentage
-      
-      console.log(`[Funding] ${strategy.ticker}: Rate=${rate.toFixed(6)} (${annualRate.toFixed(2)}% APY)`);
-
-      // 3. Update Strategy APY
-      await prisma.strategy.update({
-        where: { id: strategy.id },
-        data: { currentApy: annualRate },
-      });
-
-      // 4. Record Funding Event (Simulated based on TVL)
-      // For MVP, we assume 100% of TVL is hedged
-      const payout = strategy.tvl * rate;
-      if (payout > 0) {
-        await prisma.fundingEvent.create({
-            data: {
-                strategyId: strategy.id,
-                amount: payout,
-                timestamp: new Date(),
-            }
+        // 1. Get all active positions
+        const positions = await prisma.position.findMany({
+            where: { 
+                status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } 
+            },
+            include: { user: true }
         });
-        console.log(`[Funding] 💰 Distributed $${payout.toFixed(2)} to ${strategy.ticker} Vault`);
-      }
+
+        let eventsProcessed = 0;
+
+        // Optimization: In a real scenario, group by pairId to fetch rates once per pair
+        // For now, we iterate sequentially for simplicity.
+        
+        for (const position of positions) {
+            try {
+                const ticker = position.pairId.split('-')[0].toUpperCase();
+                // Assume storm symbol format, e.g. "TON" or "NOT"
+                // The getFundingRate$ implementation in storm.ts expects a symbol
+                
+                const fundingRate = await firstValueFrom(getFundingRate$(ticker));
+                
+                // Annualized Rate (approximate for display)
+                const annualRate = fundingRate * 24 * 365 * 100; // Hourly rate * 24 * 365
+                
+                // Update Position Stats
+                // Note: We might want to store 'lastFundingRate' on the position if the schema supports it.
+                // For now, we'll log it and create a FundingEvent if it's positive (payment received).
+                
+                Logger.info(logCtx, `Rate for ${ticker} (Pos ${position.id}): ${fundingRate.toFixed(6)} (${annualRate.toFixed(2)}% APY)`);
+
+                // Simulate Funding Payment (Accrual)
+                // In a real perp, this settles into the margin balance. 
+                // We track it as a discrete event for the UI "Yield" chart.
+                const positionSize = position.perpAmount || 0;
+                const estimatedPayout = positionSize * fundingRate;
+
+                if (Math.abs(estimatedPayout) > 0) {
+                     await prisma.fundingEvent.create({
+                        data: {
+                            positionId: position.id,
+                            amount: estimatedPayout,
+                            rate: fundingRate,
+                            type: estimatedPayout > 0 ? 'PAYMENT' : 'DEDUCTION'
+                        }
+                    });
+                    
+                    eventsProcessed++;
+                }
+
+            } catch (err) {
+                 Logger.error(logCtx, `Failed to process funding for ${position.id}`, '', { error: String(err) });
+            }
+        }
+
+        return { status: 'success', positionsProcessed: positions.length, eventsCreated: eventsProcessed };
 
     } catch (error) {
-      console.error(`[Funding] Error processing ${strategy.ticker}:`, error);
+        Logger.error(logCtx, 'CRITICAL_FAILURE', job.id, { error: String(error) });
+        throw error;
     }
-  }
-
-  return { status: 'success', strategiesProcessed: strategies.length };
 };
