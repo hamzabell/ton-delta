@@ -1,7 +1,7 @@
 {
-  "url": "https://pamelo-finance.netlify.app/",
+  "url": "https://ton-delta.onrender.com/",
   "name": "Pamelo Finance",
-  "iconUrl": "https://pamelo-finance.netlify.app/logo.png",
+  "iconUrl": "https://ton-delta.onrender.com/logo.png",
   "termsOfUseUrl": "https://ton-connect.github.io/demo-dapp-with-react-ui/terms-of-use.txt",
   "privacyPolicyUrl": "https://ton-connect.github.io/demo-dapp-with-react-ui/privacy-policy.txt"
 }
