@@ -112,7 +112,7 @@ export async function calculateVaultAddress(
     // However, @ton/ton implementation uses BigInt(1) for value serialization in getExtensionsArray.
     // We will stick to -1n (True in 1-bit signed).
     const keeperHash = BigInt("0x" + keeperAddress.hash.toString('hex'));
-    extensions.set(keeperHash, -1n);
+    extensions.set(keeperHash, BigInt(-1));
 
     // 4. Reconstruct Data Cell
     const fixedData = beginCell()
