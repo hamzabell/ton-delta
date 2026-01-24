@@ -80,7 +80,7 @@ export default function PositionDetailsBottomSheet({
                 Principal Value
               </p>
               <p className="text-lg font-black text-white italic font-mono">
-                {displayData.value.toLocaleString()} TON
+                {displayData.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TON
               </p>
             </div>
             <div className="p-5 bg-white/5 rounded-2xl space-y-1">
@@ -88,7 +88,7 @@ export default function PositionDetailsBottomSheet({
                 Accumulated Yield
               </p>
               <p className="text-lg font-black text-[#E2FF00] italic font-mono">
-                +{displayData.grossProfit.toLocaleString()} TON
+                +{displayData.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TON
               </p>
             </div>
           </div>

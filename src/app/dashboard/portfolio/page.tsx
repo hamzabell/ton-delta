@@ -59,7 +59,7 @@ export default function PortfolioPage() {
               Net Equity
             </p>
             <p className="text-lg font-black text-white font-mono italic leading-none">
-              {isConnected ? netEquity.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "---"} TON
+              {isConnected ? netEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"} TON
             </p>
              {!isConnected && <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-2">Connect Wallet</p>}
           </div>
@@ -68,7 +68,7 @@ export default function PortfolioPage() {
               Liquid Wallet
             </p>
             <p className="text-lg font-black text-white/20 font-mono italic leading-none">
-              {isConnected ? walletBalance.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "---"} TON
+              {isConnected ? walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"} TON
             </p>
             {!isConnected && <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-2">---</p>}
           </div>
@@ -90,7 +90,7 @@ export default function PortfolioPage() {
         {totalGrossProfit > 0 && (
             <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] text-[#E2FF00] font-black uppercase tracking-widest italic">
-                +{totalGrossProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })} TON Yield Harvested
+                +{totalGrossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TON Yield Harvested
             </span>
             </div>
         )}
