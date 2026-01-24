@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { prisma } from '../lib/prisma';
 import { ExecutionService } from '../lib/execution';
 import { Logger } from '../services/logger';
