@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
-import { prisma } from '@/lib/prisma';
-import { ExecutionService } from '@/lib/execution';
+import { prisma } from '../../lib/prisma';
+import { ExecutionService } from '../../lib/execution';
 import { getTonBalance } from '../../lib/onChain';
 import { getPosition$ } from '../../lib/storm';
 import { firstValueFrom } from 'rxjs';
