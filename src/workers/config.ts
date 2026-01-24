@@ -5,27 +5,14 @@ let config: ConnectionOptions;
 
 console.log(`[WorkerConfig] REDIS_URL present: ${!!process.env.REDIS_URL}`);
 if (process.env.REDIS_URL) {
-  try {
-    const url = new URL(process.env.REDIS_URL);
-    config = {
-      host: url.hostname,
-      port: Number(url.port),
-      username: url.username || undefined,
-      password: url.password || undefined,
-      tls: url.protocol === 'rediss:' ? {
-        rejectUnauthorized: false 
-      } : undefined,
-      maxRetriesPerRequest: null,
-    };
-  } catch (e) {
-    console.error('Failed to parse REDIS_URL:', e);
-    // Fallback to defaults
-    config = {
-        host: 'localhost',
-        port: 6379,
-        maxRetriesPerRequest: null
-    };
-  }
+  // BullMQ / ioredis can often handle the URL string directly or we can use it to build the object.
+  // For Upstash with TLS, sometimes just passing the URL is more reliable.
+  config = {
+    url: process.env.REDIS_URL,
+    maxRetriesPerRequest: null,
+    // Add default TLS for rediss
+    tls: process.env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined
+  } as any;
 } else {
   config = {
     host: process.env.REDIS_HOST || 'localhost',

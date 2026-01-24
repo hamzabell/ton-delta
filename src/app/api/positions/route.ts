@@ -19,6 +19,12 @@ export async function GET(request: Request) {
     if (pairId) {
       whereClause.pairId = pairId;
     }
+    if (userId) {
+      whereClause.OR = [
+        { userId: userId },
+        { user: { walletAddress: userId } }
+      ];
+    }
 
     // Fetch active positions
     const positions = await prisma.position.findMany({

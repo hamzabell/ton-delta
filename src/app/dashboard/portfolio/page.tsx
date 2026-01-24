@@ -13,7 +13,7 @@ export default function PortfolioPage() {
   // Fetch everything purely for the Ledger summary
   // Optimization: In real app, might want a specific stats endpoint 
   // instead of fetching full list just for sums.
-  const { positions: apiPositions, mutate } = usePositions();
+  const { positions: apiPositions, mutate } = usePositions(null, wallet?.account.address);
   const { pairs } = usePairs();
 
   const positions = apiPositions.map(pos => {
@@ -98,7 +98,7 @@ export default function PortfolioPage() {
 
       {/* 3. Positions List (New Component) */}
       {isConnected ? (
-        <PositionsList onRefetch={mutate}/>
+        <PositionsList onRefetch={mutate} userId={wallet?.account.address} />
       ) : (
          // Simple empty state if not connected, without the big "Connect" button block which we removed.
          <div className="p-12 text-center border border-dashed border-white/5 rounded-2xl mt-8">

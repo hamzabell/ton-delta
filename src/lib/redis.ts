@@ -23,14 +23,23 @@ if (useUpstashHttp) {
     });
 } else {
     // Fallback to IORedis (TCP)
+    const ioredisOptions: any = {
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
+        maxRetriesPerRequest: null
+    };
+
     if (process.env.REDIS_URL) {
-        redisClient = new Redis(process.env.REDIS_URL);
+        redisClient = new Redis(process.env.REDIS_URL, ioredisOptions);
     } else {
-        redisClient = new Redis({
-            ...redisConfig,
-            retryStrategy: (times: number) => Math.min(times * 50, 2000),
-            maxRetriesPerRequest: null
-        });
+        // If redisConfig has a url (from REDIS_URL), use it, otherwise use host/port
+        if ('url' in redisConfig && redisConfig.url) {
+            redisClient = new Redis(redisConfig.url as string, ioredisOptions);
+        } else {
+            redisClient = new Redis({
+                ...redisConfig,
+                ...ioredisOptions
+            });
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -8,20 +8,25 @@ import PositionFilterBottomSheet from "./PositionFilterBottomSheet";
 import PositionDetailsBottomSheet from "./PositionDetailsBottomSheet";
 import clsx from "clsx";
 
+import { useTonWallet } from "@tonconnect/ui-react";
+
 interface PositionsListProps {
   onRefetch?: () => void;
+  userId?: string | null;
 }
 
 const ITEMS_PER_PAGE = 5;
 
-export default function PositionsList({ onRefetch }: PositionsListProps) {
+export default function PositionsList({ onRefetch, userId: propUserId }: PositionsListProps) {
+  const wallet = useTonWallet();
+  const userId = propUserId || wallet?.account.address;
   const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Data Hooks
-  const { positions, isLoading, createPosition } = usePositions(selectedPairId);
+  const { positions, isLoading, createPosition } = usePositions(selectedPairId, userId);
   const { pairs } = usePairs();
 
   // Infinite Scroll State
