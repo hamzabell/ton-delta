@@ -122,6 +122,19 @@ export const ExecutionService = {
                 throw new Error(`Position ${positionId} not found`);
             }
 
+            // CRITICAL: Validate addresses FIRST before any usage
+            const userWalletAddr = position.user.walletAddress || position.userId;
+            if (!userWalletAddr) {
+                throw new Error(`User wallet address is missing for position ${positionId}`);
+            }
+
+            if (!process.env.NEXT_PUBLIC_KEEPER_ADDRESS) {
+                throw new Error('NEXT_PUBLIC_KEEPER_ADDRESS environment variable is not configured');
+            }
+
+            // Use validated wallet address for ALL operations
+            const vaultOrWalletAddr = position.vaultAddress || userWalletAddr;
+
             const entryValue = position.spotAmount * position.entryPrice;
             const currentEquity = position.totalEquity || entryValue * 0.9; 
 
@@ -169,13 +182,13 @@ export const ExecutionService = {
                      
                      // Generate Payloads for Chunk
                      const closeShortTx = await buildClosePositionPayload({
-                         vaultAddress: position.vaultAddress || position.user.walletAddress!,
+                         vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
                          amount: shortChunk.toFixed(2)
                      });
                      
                      const sellSpotTx = await stonfi.buildSwapTx({
-                         userWalletAddress: position.vaultAddress || position.user.walletAddress!,
+                         userWalletAddress: vaultOrWalletAddr,
                          fromToken: ticker, 
                          toToken: 'TON',
                          amount: toNano(chunkAmount.toString()).toString(), // Assuming this helper exists or we use import
@@ -193,7 +206,7 @@ export const ExecutionService = {
                 } else {
                     // STANDARD ATOMIC UNWIND (100%)
                     const closeShortTx = await buildClosePositionPayload({
-                         vaultAddress: position.vaultAddress || position.user.walletAddress!,
+                         vaultAddress: vaultOrWalletAddr,
                          positionId: position.id 
                     });
 
@@ -202,7 +215,7 @@ export const ExecutionService = {
                     const minOut = (BigInt(expectedOutput) * BigInt(99)) / BigInt(100);
 
                     const sellSpotTx = await stonfi.buildSwapTx({
-                         userWalletAddress: position.vaultAddress || position.user.walletAddress!,
+                         userWalletAddress: vaultOrWalletAddr,
                          fromToken: ticker, 
                          toToken: 'TON',
                          amount: position.spotAmount.toString(), // Note: verify unit consistency
@@ -228,7 +241,7 @@ export const ExecutionService = {
                 
                 // We assume the asset is tsTON.
                 const sellTsTonTx = await stonfi.buildSwapTx({
-                     userWalletAddress: position.vaultAddress || position.user.walletAddress!,
+                     userWalletAddress: vaultOrWalletAddr,
                      fromToken: 'tsTON', 
                      toToken: 'TON',
                      amount: toNano(position.totalEquity.toString()).toString(), 
@@ -243,17 +256,6 @@ export const ExecutionService = {
 
             
             Logger.info('ExecutionService', 'Wrapping for W5 delegation, revocation, and sweep...', positionId);
-            
-            // Validate addresses before parsing
-            // Note: userId IS the wallet address in this system (set during user creation)
-            const userWalletAddr = position.user.walletAddress || position.userId;
-            if (!userWalletAddr) {
-                throw new Error(`User wallet address is missing for position ${positionId}`);
-            }
-            
-            if (!process.env.NEXT_PUBLIC_KEEPER_ADDRESS) {
-                throw new Error('NEXT_PUBLIC_KEEPER_ADDRESS is not configured');
-            }
             
             const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS);
             const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(userWalletAddr);
