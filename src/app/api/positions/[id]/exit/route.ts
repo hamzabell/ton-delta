@@ -7,17 +7,28 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: positionId } = await params;
-
+  let positionId: string | undefined;
+  
   try {
+    const { id } = await params;
+    positionId = id;
+
+    Logger.info('API', 'EXIT_REQUEST_RECEIVED', positionId);
+
     const position = await prisma.position.findUnique({
       where: { id: positionId },
       include: { user: true }
     });
 
     if (!position) {
+      Logger.warn('API', 'POSITION_NOT_FOUND', positionId);
       return NextResponse.json({ error: 'Position not found' }, { status: 404 });
     }
+
+    Logger.info('API', 'POSITION_FOUND', positionId, { 
+      status: position.status, 
+      pairId: position.pairId 
+    });
 
     // Call the Universal Exit Logic
     // This handles Active, Cash Stasis, and Yield Stasis atomically.
@@ -32,9 +43,21 @@ export async function POST(
     });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    Logger.error('API', 'EXIT_REQUEST_FAILED', positionId || 'unknown', { 
+      error: errorMessage,
+      stack: errorStack 
+    });
+    
     console.error("Exit API Error:", error);
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+      },
       { status: 500 }
     );
   }

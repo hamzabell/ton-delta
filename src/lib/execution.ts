@@ -108,6 +108,10 @@ export const ExecutionService = {
 
     /**
      * Executes a Panic Unwind for a given Position.
+     * Handles different position modes:
+     * - Cash Stasis: Direct refund (no liquidation)
+     * - Liquid Stake: Unstake tsTON -> TON, then refund
+     * - Basis/Active: Close short + sell spot -> TON, then refund
      */
     executePanicUnwind: async (positionId: string, reason: string, destinationAddress?: string) => {
         Logger.info('ExecutionService', `Initiating Panic Unwind. Reason: ${reason}`, positionId);
@@ -138,9 +142,7 @@ export const ExecutionService = {
             const entryValue = position.spotAmount * position.entryPrice;
             const currentEquity = position.totalEquity || entryValue * 0.9; 
 
-            // 1. Build Liquidation Payloads based on Status
-            const liquidationMessages: { to: Address, value: bigint, body?: Cell }[] = [];
-
+            // Helper function for safe address parsing
             const safeParseAddress = (addr: string | undefined, context: string) => {
                 if (!addr) throw new Error(`Address is missing for ${context}`);
                 try {
@@ -151,15 +153,52 @@ export const ExecutionService = {
                 }
             };
 
-            if (position.status === 'active') {
-                // A. Active Basis Trade -> Close Short + Sell Spot
-                Logger.info('ExecutionService', 'Panic Unwind: Liquidating Active Position...', positionId);
+            // 1. Build Liquidation Payloads based on Position Mode
+            const liquidationMessages: { to: Address, value: bigint, body?: Cell }[] = [];
+            let liquidationDescription = 'No liquidation needed';
+
+            // MODE 1: CASH STASIS - Direct refund, no liquidation
+            if (position.status === 'stasis' || position.status === 'stasis_pending_stake') {
+                Logger.info('ExecutionService', `[CASH STASIS] Position is in Cash Stasis mode. Cash is already in contract. Proceeding directly to refund.`, positionId);
+                liquidationDescription = 'Cash Stasis - Direct Refund';
+            }
+            
+            // MODE 2: LIQUID STAKE - Unstake tsTON to TON first, then refund
+            else if (position.status === 'stasis_active') {
+                Logger.info('ExecutionService', `[LIQUID STAKE] Position is in Yield Hunter mode. Converting tsTON -> TON before refund...`, positionId);
+                
+                try {
+                    const sellTsTonTx = await swapcoffee.buildSwapTx({
+                         userWalletAddress: vaultOrWalletAddr,
+                         fromToken: 'tsTON', 
+                         toToken: 'TON',
+                         amount: position.totalEquity.toString(), 
+                         minOutput: '1'
+                    });
+
+                    liquidationMessages.push({
+                        to: safeParseAddress(sellTsTonTx.to, 'sellTsTonTx.to'), 
+                        value: typeof sellTsTonTx.value === 'bigint' ? sellTsTonTx.value : BigInt(sellTsTonTx.value), 
+                        body: typeof sellTsTonTx.body === 'string' ? Cell.fromBase64(sellTsTonTx.body) : sellTsTonTx.body
+                    });
+                    
+                    Logger.info('ExecutionService', `[LIQUID STAKE] tsTON -> TON swap payload added`, positionId);
+                    liquidationDescription = 'Liquid Stake - Unstaked tsTON to TON';
+                } catch (e) {
+                    Logger.warn('ExecutionService', `[LIQUID STAKE] Could not build tsTON unstake transaction. Proceeding with refund anyway.`, positionId);
+                    liquidationDescription = 'Liquid Stake - Unstake failed, proceeding to refund';
+                }
+            }
+            
+            // MODE 3: BASIS/ACTIVE - Close short + sell spot to TON, then refund
+            else if (position.status === 'active') {
+                Logger.info('ExecutionService', `[BASIS MODE] Position is in Active Basis mode. Closing short and selling spot to TON...`, positionId);
                 
                 const ticker = position.pairId.split('-')[0].toUpperCase();
                 
-                // 1. Close Short (Storm)
+                // Step 1: Close Short Position (Storm Trade)
                 try {
-                    Logger.info('ExecutionService', `Building Short closure for ${ticker}...`, positionId);
+                    Logger.info('ExecutionService', `[BASIS MODE] Building short closure for ${ticker}...`, positionId);
                     const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
@@ -172,15 +211,15 @@ export const ExecutionService = {
                             value: BigInt(closeShortTx.value || 0), 
                             body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined 
                         });
-                        Logger.info('ExecutionService', `Short closure payload added for ${ticker}`, positionId);
+                        Logger.info('ExecutionService', `[BASIS MODE] Short closure payload added for ${ticker}`, positionId);
                     }
                 } catch (e) {
-                    Logger.warn('ExecutionService', `Could not close short for ${ticker} (likely already closed or unsupported). Continuing...`, positionId);
+                    Logger.warn('ExecutionService', `[BASIS MODE] Could not close short for ${ticker} (likely already closed or unsupported). Continuing...`, positionId);
                 }
 
-                // 2. Sell Spot (Swap Coffee)
+                // Step 2: Sell Spot to TON (Swap Coffee)
                 try {
-                    Logger.info('ExecutionService', `Getting Swap Coffee quote for ${ticker} -> TON...`, positionId);
+                    Logger.info('ExecutionService', `[BASIS MODE] Building spot sale for ${ticker} -> TON...`, positionId);
                     const quote = await swapcoffee.getQuote(
                         ticker,
                         'TON',
@@ -206,60 +245,37 @@ export const ExecutionService = {
                         value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), 
                         body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body 
                     });
-                    Logger.info('ExecutionService', `Spot liquidation payload added for ${ticker}`, positionId);
+                    Logger.info('ExecutionService', `[BASIS MODE] Spot sale payload added for ${ticker} -> TON`, positionId);
                 } catch (e) {
-                     Logger.warn('ExecutionService', `Could not liquidate spot ${ticker} via Swap Coffee (unsupported or no liquidity). Continuing...`, positionId);
+                     Logger.warn('ExecutionService', `[BASIS MODE] Could not sell spot ${ticker} via Swap Coffee (unsupported or no liquidity). Continuing...`, positionId);
                 }
 
-
-
-
-            } else if (position.status === 'stasis' || position.status === 'stasis_pending_stake') {
-                // B. Cash Stasis -> Already Cash
-                Logger.info('ExecutionService', 'Panic Unwind: Position is in Cash Stasis. Skipping liquidation.', positionId);
-
-            } else if (position.status === 'stasis_active') {
-                // C. Yield Hunter (Liquid Staking) -> Sell tsTON
-                Logger.info('ExecutionService', 'Panic Unwind: Selling Liquid Staking position...', positionId);
+                liquidationDescription = liquidationMessages.length > 0 
+                    ? `Basis Mode - Closed short and sold spot for ${ticker}`
+                    : 'Basis Mode - Liquidation failed, proceeding to refund';
                 
-                // We assume the asset is tsTON.
-                const sellTsTonTx = await swapcoffee.buildSwapTx({
-                     userWalletAddress: vaultOrWalletAddr,
-                     fromToken: 'tsTON', 
-                     toToken: 'TON',
-                     amount: position.totalEquity.toString(), 
-                     minOutput: '1'
-                });
-
-                liquidationMessages.push(
-                    { to: safeParseAddress(sellTsTonTx.to, 'sellTsTonTx.to'), value: typeof sellTsTonTx.value === 'bigint' ? sellTsTonTx.value : BigInt(sellTsTonTx.value), body: typeof sellTsTonTx.body === 'string' ? Cell.fromBase64(sellTsTonTx.body) : sellTsTonTx.body }
-                );
-            }
-            
-            // --- GRACEFUL LIQUIDATION HANDLING ---
-            // If liquidationMessages is empty but status is 'active', it means the underlying
-            // dex/perp calls failed (e.g. unsupported asset HDCN).
-            // We still proceed to the Sweep/Revoke step to release the user's funds and delegation.
-            if (liquidationMessages.length === 0 && position.status === 'active') {
-                Logger.warn('ExecutionService', 'No on-chain liquidation possible (orphaned or unsupported position). Proceeding with sweep and revocation to release user funds.', positionId);
+                // Warn if no liquidation was possible for active position
+                if (liquidationMessages.length === 0) {
+                    Logger.warn('ExecutionService', '[BASIS MODE] No on-chain liquidation possible (orphaned or unsupported position). Proceeding with sweep and revocation to release user funds.', positionId);
+                }
             }
 
-            Logger.info('ExecutionService', 'Wrapping for W5 delegation, revocation, and sweep...', positionId);
+            Logger.info('ExecutionService', `Liquidation phase complete. Building refund transaction...`, positionId);
+            Logger.info('ExecutionService', `Liquidation summary: ${liquidationDescription}`, positionId);
             
             const keeperAddress = safeParseAddress(process.env.NEXT_PUBLIC_KEEPER_ADDRESS, 'NEXT_PUBLIC_KEEPER_ADDRESS');
             const targetAddress = position.vaultAddress ? safeParseAddress(position.vaultAddress, 'position.vaultAddress') : safeParseAddress(userWalletAddr, 'userWalletAddr');
             
-            // Keeper sends TX to Unwind AND Remove Itself (Atomic Safety)
             // 2. Build Exit Transfers (Fee + Sweep to User)
-             const { messages: exitMessages, summary } = buildAtomicExitTx({
+            const { messages: exitMessages, summary } = buildAtomicExitTx({
                  userAddress: destinationAddress || userWalletAddr,
                  totalAmountTon: currentEquity / (position.currentPrice || 1), 
                  entryValueTon: entryValue / (position.entryPrice || 1)
             });
 
-            Logger.info('ExecutionService', 'Generated Panic Payloads', positionId, summary);
+            Logger.info('ExecutionService', 'Generated Exit Fee Transfers', positionId, summary);
 
-            // 3. Combine & Configure Modes
+            // 3. Combine Liquidation + Exit Messages
             const rawMessages = [
                 ...liquidationMessages,
                 // Exit Transfers (Fee & Sweep)
@@ -275,41 +291,26 @@ export const ExecutionService = {
                 })
             ];
             
-
-            
-            // Keeper sends TX to Unwind AND Remove Itself (Atomic Safety)
-            // Note: wrapWithKeeperRequest takes 'userAddress' to build the dummy instance.
-            // Ideally this should matches the Vault's expect configuration.
-            // Since User owns Vault, and Vault is W5, this is correct.
+            // 4. Wrap with W5 Keeper Request (includes delegation revocation)
             const wrappedCell = await wrapWithKeeperRequest(
                 targetAddress, 
                 rawMessages,
                 keeperAddress // Revoke this keeper
             );
 
-            // The Keeper sends ONE transaction: To Vault (or User), Body = Wrapped Request
+            // 5. Broadcast Transaction
             const txs = [{
                 address: targetAddress.toString({ bounceable: false }),
                 value: '50000000', // 0.05 TON for gas
                 cell: wrappedCell.toBoc().toString('base64')
             }];
 
-            Logger.info('ExecutionService', 'Broadcasting Relayed Transaction...', positionId);
+            Logger.info('ExecutionService', 'Broadcasting exit transaction...', positionId);
             
             const result = await firstValueFrom(sendTransactions$(txs));
             const txHash = `seqno_${result.seqno}`; 
-
-            // If TWAP (priceImpact > 0.05 logic implicitly), we might not want to close.
-            // Check if we did a full close? 
-            // For MVP: We assume if we reached here, we closed. 
-            // BUT strict TWAP requires loop. 
-            // Implementation Fix: If we executed a chunk, we should verify balance or check flag?
-            // Actually, we can check if it was a chunk in logic above.
-            // Let's refine the logic block above to set `isPartial = true/false`.
             
-            // Re-visiting above: We didn't set a flag. Let's patch logic.
-            // Since we can't share state easily across chunks without refactor, assume full close for now unless we add 'unwinding' state.
-            
+            // 6. Update Position Status
             await prisma.$transaction([
                 prisma.position.update({
                     where: { id: positionId },
@@ -323,8 +324,9 @@ export const ExecutionService = {
             Logger.warn('ExecutionService', 'PANIC_UNWIND_EXECUTED', positionId, {
                 reason,
                 txHash,
+                mode: position.status,
+                liquidationSummary: liquidationDescription,
                 feeSummary: summary,
-                liquidation: 'Short Closed + Spot Sold',
                 seqno: result.seqno
             });
 
