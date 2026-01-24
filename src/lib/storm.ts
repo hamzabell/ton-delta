@@ -8,7 +8,7 @@ import {
     AssetInfo 
 } from '@storm-trade/sdk';
 import { Address, fromNano, toNano } from '@ton/core';
-import { getTonClient } from './onChain';
+import { getTonClient, withRetry } from './onChain';
 
 /**
  * Singleton StormSDK instance
@@ -37,7 +37,7 @@ export const getMarkPrice$ = (symbol: string): Observable<number> => {
             const baseAsset = symbol.split('-')[0].toUpperCase();
             
             // SDK returns bigint (nano), convert to number
-            const priceNano = await sdk.getMarketPrice(baseAsset);
+            const priceNano = await withRetry(c => sdk.getMarketPrice(baseAsset));
             return Number(fromNano(priceNano));
         } catch (e: any) {
             console.error(`[StormSDK] Failed to get price for ${symbol}`, e.message);
@@ -54,7 +54,7 @@ export const getFundingRate$ = (symbol: string): Observable<number> => {
         try {
             const sdk = await getStormSDK();
             const baseAsset = symbol.split('-')[0].toUpperCase();
-            const funding = await sdk.getFunding(baseAsset);
+            const funding = await withRetry(c => sdk.getFunding(baseAsset));
             // Funding is likely returned as object { longFunding, shortFunding } (bigint)
             // For Short strategy, we want shortFunding. 
             // Note: need to verify normalization (decimals).
@@ -76,13 +76,13 @@ export const buildOpenPositionPayload = async (params: { vaultAddress: string, a
     const baseAsset = params.symbol || 'TON';
 
     // 1x Short
-    const txParams = await sdk.increasePosition({
+    const txParams = await withRetry(c => sdk.increasePosition({
         baseAsset,
         amount: toNano(params.amount),
         leverage: toNano(params.leverage), // SDK expects leverage in 9 decimals? Types says "bigint". Examples usually use toNano(lev).
         direction: Direction.short,
         traderAddress: Address.parse(params.vaultAddress)
-    });
+    }));
 
     return {
         to: txParams.to.toString(),
@@ -107,19 +107,19 @@ export const buildClosePositionPayload = async (params: { vaultAddress: string, 
     
     if (sizeToClose === BigInt(0)) {
         // Fetch full position
-        const position = await sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset);
+        const position = await withRetry(c => sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset));
         if (!position) throw new Error("No open position found to close");
         if (!position.shortPosition) throw new Error("No short position found to close");
         
         sizeToClose = position.shortPosition.positionData.size;
     }
 
-    const txParams = await sdk.closePosition({
+    const txParams = await withRetry(c => sdk.closePosition({
         baseAsset,
         direction: Direction.short,
         traderAddress: Address.parse(params.vaultAddress),
         size: sizeToClose
-    });
+    }));
 
     return {
         to: txParams.to.toString(),
@@ -136,19 +136,19 @@ export const buildAdjustMarginPayload = async (params: { vaultAddress: string, a
 
     let txParams;
     if (params.isDeposit) {
-        txParams = await sdk.addMargin({
+        txParams = await withRetry(c => sdk.addMargin({
             baseAsset: params.symbol || 'TON', // Allow override
             amount: toNano(params.amount),
             direction: Direction.short,
             traderAddress: Address.parse(params.vaultAddress)
-        });
+        }));
     } else {
-         txParams = await sdk.removeMargin({
+         txParams = await withRetry(c => sdk.removeMargin({
             baseAsset: params.symbol || 'TON',
             amount: toNano(params.amount),
             direction: Direction.short,
             traderAddress: Address.parse(params.vaultAddress)
-        });
+        }));
     }
 
     return {
@@ -166,7 +166,7 @@ export const getPosition$ = (symbol: string, userAddress: string): Observable<{ 
         const sdk = await getStormSDK();
         const baseAsset = symbol.split('-')[0].toUpperCase();
         
-        const posData = await sdk.getPositionAccountData(Address.parse(userAddress), baseAsset);
+        const posData = await withRetry(c => sdk.getPositionAccountData(Address.parse(userAddress), baseAsset));
         
         if (!posData || !posData.shortPosition) {
             // No position
