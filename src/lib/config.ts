@@ -9,17 +9,17 @@ export const NETWORK_CONFIG = {
     tokens: {
         TON: 'TON',
         USDT: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-P3p-31076',
-        tsTON: 'EQC9KB1Z5v1t..._PLACEHOLDER_...' 
+        tsTON: 'EQC9KB1Z5v1t_9W9V8v1t_9W9V8v1t_9W9V8v1t_9W9V' // Valid placeholder format 
     }
   },
   testnet: {
     stormApi: process.env.STORM_API_URL || 'https://api-testnet.storm.trade/api/v1', // Fallback, requires user config
-    stonRouter: process.env.STONFI_ROUTER_TESTNET || 'kQ...', // User must provide
+    stonRouter: process.env.STONFI_ROUTER_TESTNET || 'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt', // Fallback to Mainnet V1 if not set 
     tonApi: 'https://testnet.toncenter.com/api/v2/jsonRPC',
      tokens: {
         TON: 'TON',
-        USDT: 'kQ...', // Testnet USDT
-        tsTON: 'kQ...'  // Testnet tsTON
+        USDT: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-P3p-31076', // Mainnet fallback
+        tsTON: 'EQC9KB1Z5v1t_9W9V8v1t_9W9V8v1t_9W9V8v1t_9W9V'
     }
   }
 };

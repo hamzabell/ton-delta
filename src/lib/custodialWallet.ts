@@ -1,7 +1,6 @@
-import { TonClient, WalletContractV4, internal, SendMode, OpenedContract } from 'ton';
-import { KeyPair } from 'ton-crypto';
-import { Address, Cell } from 'ton-core';
-import { mnemonicToPrivateKey } from 'ton-crypto';
+import { TonClient, WalletContractV4, internal, SendMode, OpenedContract } from '@ton/ton';
+import { KeyPair, mnemonicToPrivateKey } from 'ton-crypto';
+import { Address, Cell } from '@ton/core';
 import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
@@ -31,7 +30,7 @@ export const sendTransactions$ = (transactions: { address: string, value: string
     switchMap(({ contract, key }) => {
       return (from(contract.getSeqno()) as Observable<number>).pipe(
         switchMap((seqno) => {
-          console.log(`[Custodial] Sending ${transactions.length} transactions from ${contract.address.toString()}`);
+          console.log(`[Custodial] Sending ${transactions.length} transactions from ${contract.address.toString({ bounceable: false })}`);
           
           const transferPromise = contract.sendTransfer({
             seqno,
@@ -45,7 +44,7 @@ export const sendTransactions$ = (transactions: { address: string, value: string
           });
 
           return from(transferPromise).pipe(
-            map(() => ({ seqno, address: contract.address.toString() }))
+            map(() => ({ seqno, address: contract.address.toString({ bounceable: false }) }))
           );
         })
       );

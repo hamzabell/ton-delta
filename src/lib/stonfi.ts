@@ -1,4 +1,5 @@
-import { TonClient, Address, toNano } from 'ton';
+import { TonClient } from '@ton/ton';
+import { Address, toNano, beginCell } from '@ton/core';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { from, Observable, of } from 'rxjs';
@@ -87,8 +88,6 @@ export const stonfi = {
         amount: string;
         minOutput: string;
     }) => {
-        const { beginCell, toNano, Address } = await import('@ton/core');
-        
         // 1. Swap TON -> Token (Stasis Entry)
         // We send TON to the pTON Vault (or Router) with the Swap Payload.
         // OpCode: 0x25938561 (swap)
@@ -109,7 +108,7 @@ export const stonfi = {
 
         return {
             to: CURRENT_NETWORK.stonRouter, // Send to Router (who forwards to pTON vault usually) or direct pTON vault
-            value: BigInt(params.amount) + toNano('0.2'), // + Gas
+            value: toNano(params.amount) + toNano('0.2'), // + Gas (Fix: Use toNano for both parts)
             body: swapBody.toBoc().toString('base64')
         };
     },

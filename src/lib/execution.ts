@@ -141,6 +141,16 @@ export const ExecutionService = {
             // 1. Build Liquidation Payloads based on Status
             const liquidationMessages: { to: Address, value: bigint, body?: Cell }[] = [];
 
+            const safeParseAddress = (addr: string | undefined, context: string) => {
+                if (!addr) throw new Error(`Address is missing for ${context}`);
+                try {
+                    return Address.parse(addr);
+                } catch (e) {
+                    Logger.error('ExecutionService', 'ADDRESS_PARSE_FAILED', positionId, { address: addr, context });
+                    throw new Error(`Invalid address for ${context}: ${addr}`);
+                }
+            };
+
             if (position.status === 'active') {
                 // A. Active Basis Trade -> Close Short + Sell Spot
                 Logger.info('ExecutionService', 'Panic Unwind: Liquidating Active Position...', positionId);
@@ -196,8 +206,8 @@ export const ExecutionService = {
                      });
 
                       liquidationMessages.push(
-                        { to: Address.parse(closeShortTx.to), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
-                        { to: Address.parse(sellSpotTx.to), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
+                        { to: safeParseAddress(closeShortTx.to, 'closeShortTx.to'), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
+                        { to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
                     );
 
                     // We do NOT close the position in DB yet. We leave it 'active' or 'unwinding'.
@@ -223,8 +233,8 @@ export const ExecutionService = {
                     });
 
                     liquidationMessages.push(
-                        { to: Address.parse(closeShortTx.to), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
-                        { to: Address.parse(sellSpotTx.to), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
+                        { to: safeParseAddress(closeShortTx.to, 'closeShortTx.to'), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
+                        { to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
                     );
                 }
 
@@ -249,7 +259,7 @@ export const ExecutionService = {
                 });
 
                 liquidationMessages.push(
-                    { to: Address.parse(sellTsTonTx.to), value: typeof sellTsTonTx.value === 'bigint' ? sellTsTonTx.value : BigInt(sellTsTonTx.value), body: typeof sellTsTonTx.body === 'string' ? Cell.fromBase64(sellTsTonTx.body) : sellTsTonTx.body }
+                    { to: safeParseAddress(sellTsTonTx.to, 'sellTsTonTx.to'), value: typeof sellTsTonTx.value === 'bigint' ? sellTsTonTx.value : BigInt(sellTsTonTx.value), body: typeof sellTsTonTx.body === 'string' ? Cell.fromBase64(sellTsTonTx.body) : sellTsTonTx.body }
                 );
             }
 
@@ -257,8 +267,8 @@ export const ExecutionService = {
             
             Logger.info('ExecutionService', 'Wrapping for W5 delegation, revocation, and sweep...', positionId);
             
-            const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS);
-            const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(userWalletAddr);
+            const keeperAddress = safeParseAddress(process.env.NEXT_PUBLIC_KEEPER_ADDRESS, 'NEXT_PUBLIC_KEEPER_ADDRESS');
+            const targetAddress = position.vaultAddress ? safeParseAddress(position.vaultAddress, 'position.vaultAddress') : safeParseAddress(userWalletAddr, 'userWalletAddr');
             
             // Keeper sends TX to Unwind AND Remove Itself (Atomic Safety)
             // 2. Build Exit Transfers (Fee + Sweep to User)
@@ -300,7 +310,7 @@ export const ExecutionService = {
 
             // The Keeper sends ONE transaction: To Vault (or User), Body = Wrapped Request
             const txs = [{
-                address: targetAddress.toString(),
+                address: targetAddress.toString({ bounceable: false }),
                 value: '50000000', // 0.05 TON for gas
                 cell: wrappedCell.toBoc().toString('base64')
             }];

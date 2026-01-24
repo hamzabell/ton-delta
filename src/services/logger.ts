@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../lib/prisma';
 
 export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
 
