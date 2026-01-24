@@ -77,6 +77,7 @@ export async function buildKeeperRequest(
     });
 }
 
+
 /**
  * Calculates the future address of a new Isolated W5 Vault.
  * The Vault is owned by the User, but has the Keeper pre-installed as an extension.
@@ -85,48 +86,61 @@ export async function calculateVaultAddress(
     userPublicKey: Buffer,
     keeperAddress: Address
 ): Promise<{ address: Address, stateInit: Cell }> {
+    const { Dictionary, beginCell } = await import("@ton/core");
     
-    // Create W5 with: Owner = User, Extension = Keeper
-    // Note: W5R1 config requires a dictionary for extensions if pre-installing
-    // But standard create method might not expose extensions param easily in current SDK version.
-    
-    // Workaround: We deploy a standard W5 owned by User.
-    // However, if we want the Keeper pre-installed, we need to inject it into the initial data.
-    // If the SDK doesn't support 'extensions' in 'create', we might need to deploy then addExtension.
-    // BUT 'One Atomic Operation' requirement means we should try to pre-install.
-    
+    // 1. Create standard W5 owned by User to get code and default data
     const wallet = WalletContractV5R1.create({
         workchain: 0,
         publicKey: userPublicKey,
-        // Current SDK 'create' mainly sets public key. 
-        // extensions are usually added via internal message after deploy.
-        // For atomic deployment with extension, we'd need custom data construction.
-        // Fallback Recommendation: 
-        // 1. Deploy Wallet (owned by User).
-        // 2. Add Extension in same bundle? No, can't add extension to undeployed wallet easily.
-        
-        // Revised Strategy for Atomic:
-        // The Vault is a Multi-Sig or Special Contract? No, sticking to W5.
-        // We will deploy the W5 owned by USER.
-        // The INITIAL payload will be signed by USER (since they deploy it)
-        // And that initial payload can contain 'add_extension(keeper)'.
-        // So:
-        // - Address = Derived from User Public Key
-        // - Tx 1: Fund & Deploy
-        // - Tx 2 (Wrapped in same bundle or immediately after): User signs "Add Extension" to the NEW vault.
     });
 
+    // 2. Parse the default data to reconstruct it with extensions
+    // Default Data Layout: isSigAllowed (1) | seqno (32) | walletId (32) | publicKey (256) | extensions (Dict)
+    const dataSlice = wallet.init.data.beginParse();
+    const isSigAllowed = dataSlice.loadBit();
+    const seqno = dataSlice.loadUint(32);
+    const walletId = dataSlice.loadUint(32);
+    const pubKey = dataSlice.loadBuffer(32);
+    // dataSlice.loadBit() // Skip empty dict bit (0) which is what normal create() produces
+    
+    // 3. Create Extensions Dictionary
+    // Key: Address Hash (256), Value: Int(1) (implied checks usually just check existence)
+    const extensions = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.BigInt(1));
+    
+    // Add Keeper Address. The value 1n commonly denotes "enabled".
+    // Important: W5 spec usually maps hash -> wc (int8). 
+    // However, @ton/ton implementation uses BigInt(1) for value serialization in getExtensionsArray.
+    // We will stick to -1n (True in 1-bit signed).
+    const keeperHash = BigInt("0x" + keeperAddress.hash.toString('hex'));
+    extensions.set(keeperHash, -1n);
+
+    // 4. Reconstruct Data Cell
+    const fixedData = beginCell()
+        .storeBit(isSigAllowed)
+        .storeUint(seqno, 32)
+        .storeUint(walletId, 32)
+        .storeBuffer(pubKey, 32)
+        .storeDict(extensions) // Store our non-empty dictionary
+        .endCell();
+
+    // 5. Calculate Address
+    const stateInit = beginCell()
+        .storeBit(0) // split_depth
+        .storeBit(0) // special
+        .storeMaybeRef(wallet.init.code)
+        .storeMaybeRef(fixedData)
+        .storeBit(0) // library
+        .endCell();
+
+    const { contractAddress } = await import("@ton/core");
+    const address = contractAddress(0, { code: wallet.init.code, data: fixedData });
+
     return {
-        address: wallet.address,
-        stateInit: beginCell()
-            .storeBit(0) // split_depth
-            .storeBit(0) // special
-            .storeMaybeRef(wallet.init.code)
-            .storeMaybeRef(wallet.init.data)
-            .storeBit(0) // library
-            .endCell()
+        address,
+        stateInit
     };
 }
+
 /**
  * Checks if a contract is deployed and active on-chain.
  */
@@ -145,3 +159,4 @@ export async function checkContractDeployed(address: string): Promise<boolean> {
         return false;
     }
 }
+

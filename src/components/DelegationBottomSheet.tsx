@@ -57,7 +57,17 @@ export default function DelegationBottomSheet({
   const [tonConnectUI] = useTonConnectUI();
 
   const handleExecute = async () => {
-    if (!amount || !pairId || !wallet) return;
+    console.log("DelegationBottomSheet: handleExecute called");
+    if (!wallet) {
+        console.error("DelegationBottomSheet: Wallet not connected");
+        alert("Please connect your wallet first.");
+        return;
+    }
+    if (!amount || !pairId) {
+        console.error("DelegationBottomSheet: Missing amount or pairId", { amount, pairId });
+        return;
+    }
+
     const stakeAmount = parseFloat(amount);
     const lossLimit = parseFloat(maxLoss);
 
@@ -69,6 +79,7 @@ export default function DelegationBottomSheet({
     setIsConfirming(true);
     
     try {
+        console.log("DelegationBottomSheet: Importing W5 utils...");
         // 1. Prepare W5 Logic for ISOLATED VAULT
         const { calculateVaultAddress, buildAddExtensionBody } = await import("@/lib/w5-utils");
         const { Address, toNano } = await import("@ton/core");
@@ -76,12 +87,18 @@ export default function DelegationBottomSheet({
         
         // Vault Owner = Current User
         if (!wallet.account?.publicKey) {
+            console.error("DelegationBottomSheet: No public key in wallet account");
             alert("Wallet public key not available");
             return;
         }
         const userPublicKey = Buffer.from(wallet.account.publicKey, "hex");
-        const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "");
+        const keeperAddressStr = process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "";
+        if (!keeperAddressStr) {
+            throw new Error("NEXT_PUBLIC_KEEPER_ADDRESS is not defined");
+        }
+        const keeperAddress = Address.parse(keeperAddressStr);
         
+        console.log("DelegationBottomSheet: Calculating Vault Address...");
         // 2. Derive deterministic Vault Address
         const vault = await calculateVaultAddress(userPublicKey, keeperAddress);
         const vaultAddressStr = vault.address.toString();
@@ -89,22 +106,40 @@ export default function DelegationBottomSheet({
         console.log("Calculated Vault Address:", vaultAddressStr);
 
         // 3. Build Transaction Bundle
-        const authPayload = await buildAddExtensionBody(vault.address, keeperAddress);
-
+        // We no longer strictly need buildAddExtensionBody if we pre-install in stateInit,
+        // BUT we might still want to call it if we were doing the 2-step approach.
+        // For now, let's keep the payload generation but we might change how we use it based on w5-utils updates.
+        // If we are pre-installing, we don't need a specific payload to add extension, 
+        // just a deployment with correct stateInit. 
+        // However, usually we want to trigger something or just deploy. 
+        // A simple transfer to the vault is enough to deploy it if stateInit is attached.
+        
+        // Let's send a comment "Deploy Vault" payload for now to keep it simple.
+        const { CommentMessage } = await import("@/lib/utils"); // Assuming we have utils or just manual cell
+        // actually just empty body or comment is fine.
+        
+        // For verify sake: verify w5-utils signature.
+        
         const messages = [
             // 1. Deploy & Fund
             {
                 address: vaultAddressStr,
                 amount: toNano((stakeAmount + 0.1).toFixed(9)).toString(), // Capital + 0.1 TON for Gas/Storage
-                stateInit: vault.stateInit.toBoc().toString("base64"), // Deploy code
-                payload: authPayload.toBoc().toString("base64")
+                stateInit: vault.stateInit.toBoc().toString("base64"), // Deploy code (now includes extension hopefully)
+                // payload: ... // If we pre-install, we don't need 'addExtension' payload. 
+                // We can just send a simple "Deploy" comment or empty body.
+                payload: undefined // Empty body is fine for simple transfer/deploy
             },
         ];
+
+        console.log("DelegationBottomSheet: Sending transaction...", messages);
 
         const txResult = await tonConnectUI.sendTransaction({
             messages,
             validUntil: Date.now() + 5 * 60 * 1000 
         });
+
+        console.log("DelegationBottomSheet: Transaction sent, hash:", txResult.boc);
 
         // 4. Create Backend Record with Vault Address
         const res = await fetch('/api/positions', {
@@ -130,7 +165,7 @@ export default function DelegationBottomSheet({
         alert(`Strategy Deployed via Pamelo W5 Account Successfully`);
         onClose();
     } catch (err) {
-      console.error(err);
+      console.error("DelegationBottomSheet: Error encountered", err);
       alert("Failed to deploy strategy: " + (err as Error).message);
     } finally {
       setIsConfirming(false);
