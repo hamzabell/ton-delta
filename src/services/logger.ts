@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import newrelic from 'newrelic';
+import { prisma } from '@/lib/prisma';
 
 export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
 
@@ -11,18 +11,20 @@ export const Logger = {
     const posSuffix = positionId ? ` [${positionId}]` : '';
     console.log(`[${timestamp}] [${level}] [${component}]${posSuffix} ${action}`, JSON.stringify(details));
 
-    // Persist to New Relic
+    // Persist to Database (AuditLog table)
     try {
-      newrelic.recordCustomEvent('AuditLog', {
-        level,
-        component,
-        action,
-        positionId,
-        ...details,
-        timestamp: Date.now()
+      await prisma.auditLog.create({
+        data: {
+          level,
+          component,
+          action,
+          positionId,
+          details: JSON.stringify(details),
+          timestamp: new Date()
+        }
       });
     } catch (err) {
-      console.error('Failed to write audit log to New Relic:', err);
+      console.error('Failed to write audit log to database:', err);
     }
   },
 

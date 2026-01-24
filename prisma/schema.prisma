@@ -132,3 +132,18 @@ model MetricSnapshot {
   activeStrategies Int
   activePositions  Int
 }
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  timestamp  DateTime @default(now())
+  level      String   // "INFO", "WARN", "ERROR"
+  component  String   // e.g., "ExecutionService", "API", "Worker"
+  action     String   // e.g., "POSITION_CREATED", "PANIC_UNWIND_EXECUTED"
+  positionId String?  // Optional reference to position
+  details    String?  @db.Text // JSON string for additional context
+  
+  @@index([timestamp])
+  @@index([level])
+  @@index([component])
+  @@index([positionId])
+}
