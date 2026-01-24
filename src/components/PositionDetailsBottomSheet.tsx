@@ -90,6 +90,9 @@ export default function PositionDetailsBottomSheet({
               <p className="text-lg font-black text-[#E2FF00] italic font-mono">
                 +{displayData.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TON
               </p>
+              <p className="text-[8px] font-bold text-[#E2FF00]/60 uppercase tracking-widest mt-1">
+                +{((displayData.grossProfit / displayData.value) * 100).toFixed(2)}% Growth
+              </p>
             </div>
           </div>
 
