@@ -3,6 +3,7 @@ import { ConnectionOptions } from 'bullmq';
 // Use REDIS_URL if available (common in platform deployment and provided by Upstash)
 let config: ConnectionOptions;
 
+console.log(`[WorkerConfig] REDIS_URL present: ${!!process.env.REDIS_URL}`);
 if (process.env.REDIS_URL) {
   try {
     const url = new URL(process.env.REDIS_URL);

@@ -1,5 +1,5 @@
-
-import { TonClient, Address } from 'ton';
+import { TonClient } from '@ton/ton';
+import { Address, beginCell } from '@ton/core';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 import { CURRENT_NETWORK } from './config'; // Adjust path if needed
 
@@ -39,5 +39,3 @@ export const getJettonBalance = async (minterAddress: string, ownerAddress: stri
     const result = await client.callGetMethod(jettonWallet, 'get_wallet_data');
     return result.stack.readBigNumber();
 };
-
-import { beginCell } from 'ton';

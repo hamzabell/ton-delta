@@ -1,5 +1,5 @@
-import { TonClient, WalletContractV4, internal } from 'ton';
-import { Address, beginCell, toNano } from 'ton-core';
+import { TonClient, WalletContractV4, internal } from '@ton/ton';
+import { Address, beginCell, toNano } from '@ton/core';
 import { mnemonicToPrivateKey } from 'ton-crypto';
 import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
