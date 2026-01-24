@@ -68,7 +68,8 @@ export const ExecutionService = {
             const openShortTx = await buildOpenPositionPayload({
                  vaultAddress: position.vaultAddress || position.user.walletAddress!, // Use actual vault
                  amount: marginAlloc.toFixed(2),
-                 leverage: 1
+                 leverage: 1,
+                 symbol: ticker
             });
 
             // 3. Wrap & Broadcast
@@ -194,7 +195,8 @@ export const ExecutionService = {
                      const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
-                         amount: shortChunk.toFixed(2)
+                         amount: shortChunk.toFixed(2),
+                         symbol: ticker
                      });
                      
                      const sellSpotTx = await stonfi.buildSwapTx({
@@ -217,7 +219,8 @@ export const ExecutionService = {
                     // STANDARD ATOMIC UNWIND (100%)
                     const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
-                         positionId: position.id 
+                         positionId: position.id,
+                         symbol: ticker
                     });
 
                     // Slippage Protected Output
@@ -365,16 +368,18 @@ export const ExecutionService = {
              const position = await prisma.position.findUnique({ where: { id: positionId }, include: { user: true } });
              if (!position) throw new Error("Position not found");
 
+             const ticker = position.pairId.split('-')[0].toUpperCase();
+
              // 1. Build Close Short Payload
              const closeShortTx = await buildClosePositionPayload({
                  vaultAddress: position.vaultAddress || position.user.walletAddress!, 
-                 positionId: position.id 
+                 positionId: position.id,
+                 symbol: ticker
              });
 
              // 2. Build Spot Sell Payload (Liquidation to Cash)
              // We assume pairId format "ticker-ton" implies ticker is the spot asset.
              // e.g. "dogs-ton" -> Spot is DOGS. We swap DOGS -> TON.
-             const ticker = position.pairId.split('-')[0].toUpperCase();
              const sellSpotTx = await stonfi.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: ticker, 
@@ -579,11 +584,14 @@ export const ExecutionService = {
 
             const { buildAdjustMarginPayload } = await import('./storm');
 
+            const ticker = position.pairId.split('-')[0].toUpperCase();
+
             // 1. Build Rebalance Payload
             const rebalanceTx = await buildAdjustMarginPayload({
                 vaultAddress: position.vaultAddress || position.user.walletAddress!,
                 amount: amount.toFixed(2),
-                isDeposit
+                isDeposit,
+                symbol: ticker
             });
 
             // 2. Wrap & Broadcast
@@ -628,13 +636,15 @@ export const ExecutionService = {
 
             let txPayload;
             const absDelta = Math.abs(delta);
+            const ticker = position.pairId.split('-')[0].toUpperCase();
 
             if (delta > 0) {
                 // Short is too small (Under-hedged). Open more Short.
                  txPayload = await buildOpenPositionPayload({
                      vaultAddress: position.vaultAddress || position.user.walletAddress!,
                      amount: absDelta.toFixed(2),
-                     leverage: 1
+                     leverage: 1,
+                     symbol: ticker
                 });
             } else {
                 // Short is too big (Over-hedged). Close some Short.
@@ -647,7 +657,8 @@ export const ExecutionService = {
                 txPayload = await buildClosePositionPayload({
                      vaultAddress: position.vaultAddress || position.user.walletAddress!,
                      positionId: position.id,
-                     amount: absDelta.toFixed(2) // Reduce by specific amount
+                     amount: absDelta.toFixed(2), // Reduce by specific amount
+                     symbol: ticker
                 });
             }
 
