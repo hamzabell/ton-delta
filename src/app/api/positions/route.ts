@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const pairId = searchParams.get('pairId');
 
     const whereClause: any = { 
-      status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } 
+      status: { in: ['active', 'stasis', 'pending_entry', 'closed', 'refunding'] } 
     };
     if (pairId) {
       whereClause.pairId = pairId;
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
         maxLossPercentage: maxLossPercentage || 0.20,
         delegationDuration: body.delegationDuration || '7d',
         delegationExpiry: calculateExpiry(body.delegationDuration || '7d'),
-        stasisPreference: body.stasisPreference || 'CASH',
+        stasisPreference: 'CASH',
         vaultAddress: body.vaultAddress || user?.walletAddress // Fallback to user wallet if no specific vault addr (e.g. non-custodial)
       }
     });

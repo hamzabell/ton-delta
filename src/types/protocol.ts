@@ -11,7 +11,7 @@ export interface Position {
   fundingRateEMA: number; // 24h EMA
   driftCoefficient: number; // δ_drift
   principalFloor: number;   // E_floor
-  status: 'active' | 'stasis' | 'emergency' | 'closed' | 'stasis_pending_stake' | 'stasis_active' | 'pending_entry';
+  status: 'active' | 'stasis' | 'emergency' | 'closed' | 'stasis_pending_stake' | 'stasis_active' | 'pending_entry' | 'processing_exit';
   createdAt: string;
   updatedAt: string;
   lastRebalanced?: string | Date; // Added for UI compatibility

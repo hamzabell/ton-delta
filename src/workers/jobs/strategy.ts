@@ -23,7 +23,7 @@ export const strategyJob = async (job: Job) => {
 
         // 1. Fetch All Active & Stasis Positions
         const positions = await prisma.position.findMany({
-            where: { status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } },
+            where: { status: { in: ['active', 'stasis'] } },
             include: { user: true }
         });
 
@@ -47,13 +47,8 @@ export const strategyJob = async (job: Job) => {
                 const ticker = position.pairId.split('-')[0].toUpperCase();
                 const fundingRate = await firstValueFrom(getFundingRate$(ticker));
 
-                if (position.status === 'stasis_pending_stake') {
-                     // MODE: Yield Hunter Step 2 (Liquid Stake TON -> tsTON)
-                     Logger.info(logCtx, 'Yield Hunter: Executing Pending Stake...', position.id);
-                     await ExecutionService.processPendingStake(position.id);
-                     
-                } else if (position.status === 'stasis' || position.status === 'stasis_active') {
-                    // MODE: Stasis (Cash or Liquid Staking)
+                if (position.status === 'stasis') {
+                    // MODE: Stasis (Cash)
                     // Check for Re-entry (Positive Funding Return)
                     if (fundingRate > FUNDING_ENTRY_THRESHOLD) {
                         Logger.info(logCtx, `Funding Positive (${fundingRate}%). Re-entering Basis Mode.`, position.id);

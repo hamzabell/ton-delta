@@ -13,7 +13,9 @@ async function refundAllOpenPositions() {
                 status: { 
                     in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] 
                 } 
-            }
+            },
+            include: { user: true }
+
         });
 
         Logger.info(logCtx, `Found ${positions.length} positions to refund.`);
@@ -33,7 +35,7 @@ async function refundAllOpenPositions() {
                 await ExecutionService.executePanicUnwind(
                     position.id, 
                     "System-wide position refund triggered by admin",
-                    "UQBF63kZHYMgnKWTlF2rxHIMlAFPN-gOMH7GXkONFgRAs44V"
+                    position.user.walletAddress || position.userId
                 );
                 
                 processedVaults.add(position.vaultAddress);

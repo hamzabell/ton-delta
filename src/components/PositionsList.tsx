@@ -55,11 +55,12 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
   }, [positions.length, visibleCount]);
 
   // Derived Values
-  const [filterStatus, setFilterStatus] = useState<'OPEN' | 'CLOSED'>('OPEN');
+  const [filterStatus, setFilterStatus] = useState<'OPEN' | 'CLOSED' | 'PROCESSING'>('OPEN');
 
   // Derived Values
   const filteredPositions = positions.filter(p => {
-    if (filterStatus === 'OPEN') return p.status !== 'closed';
+    if (filterStatus === 'OPEN') return p.status !== 'closed' && p.status !== 'processing_exit';
+    if (filterStatus === 'PROCESSING') return p.status === 'processing_exit';
     return p.status === 'closed';
   });
   
@@ -93,10 +94,16 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
         throw new Error(data.error || 'Failed to initiate exit');
       }
 
-      alert(`Exit Initiated Successfully!\nTx: ${data.txHash}\nRequest: ${data.message}`);
+      const explorerLink = data.explorerLink || '';
+      alert(`Exit Initiated Successfully!\n\nTransaction: ${data.txHash}\n\nView on explorer:\n${explorerLink}\n\n${data.message}`);
       
       setSelectedPositionId(null);
-      if (onRefetch) onRefetch();
+      // Force refetch to update UI
+      if (onRefetch) {
+        onRefetch();
+      } else {
+        window.location.reload();
+      }
 
     } catch (error) {
       console.error('Exit Error:', error);
@@ -121,6 +128,15 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
                 )}
              >
                 Active
+             </button>
+             <button 
+                onClick={() => setFilterStatus('PROCESSING')}
+                className={clsx(
+                    "text-[10px] font-bold uppercase tracking-[0.3em] transition-colors",
+                    filterStatus === 'PROCESSING' ? "text-[#E2FF00]" : "text-white/20 hover:text-white/40"
+                )}
+             >
+                Processing
              </button>
              <button 
                 onClick={() => setFilterStatus('CLOSED')}
@@ -228,8 +244,7 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
         onClose={() => setSelectedPositionId(null)}
         position={positions.find(p => p.id === selectedPositionId) || null}
         displayData={selectedPositionId ? getEnrichedPosition(positions.find(p => p.id === selectedPositionId)) : null}
-        onClosePosition={handleClosePosition}
-        onPanic={handlePanic}
+        onExit={(id) => handleExit(id, 'PANIC')} // Unified exit (Panic/Universal)
         isProcessing={isProcessing}
       />
     </div>

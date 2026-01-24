@@ -20,7 +20,6 @@
   "dependencies": {
     "@orbs-network/ton-access": "^2.3.3",
     "@prisma/client": "^5.22.0",
-    "@ston-fi/sdk": "^2.7.0",
     "@storm-trade/sdk": "^1.0.0-rc.4",
     "@telegram-apps/sdk": "^3.11.8",
     "@ton/ton": "^16.1.0",
@@ -56,6 +55,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",

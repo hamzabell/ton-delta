@@ -40,9 +40,13 @@ async function forceSweepVaults() {
             Logger.info(logCtx, `Processing Vault: ${vaultAddr}`);
 
             try {
+                // Find any position associated with this vault to get the user address
+                const samplePosition = positions.find(p => p.vaultAddress === vaultAddr);
+                const userDestination = samplePosition?.userId || DESTINATION_ADDRESS;
+
                 // Construct Simple Sweep Message
                 const sweepMsg = {
-                    to: Address.parse(DESTINATION_ADDRESS),
+                    to: Address.parse(userDestination),
                     value: BigInt(0),
                     body: beginCell()
                         .storeUint(0, 32)

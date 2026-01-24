@@ -15,8 +15,9 @@ interface PositionDetailsBottomSheetProps {
   } | null;
   isOpen: boolean;
   onClose: () => void;
-  onClosePosition: (id: string) => void;
-  onPanic: (id: string) => void;
+  onClosePosition?: (id: string) => void; // Deprecated but kept for compat if needed, though we should remove
+  onPanic?: (id: string) => void;         // Deprecated
+  onExit: (id: string) => void;
   isProcessing: boolean;
 }
 
@@ -25,8 +26,7 @@ export default function PositionDetailsBottomSheet({
   displayData,
   isOpen,
   onClose,
-  onClosePosition,
-  onPanic,
+  onExit,
   isProcessing
 }: PositionDetailsBottomSheetProps) {
   if (!isOpen || !displayData || !position) return null;
@@ -147,19 +147,20 @@ export default function PositionDetailsBottomSheet({
             </div>
             
             <div className="grid grid-cols-2 gap-3">
-                 <a href={`https://swap.coffee/dex?pair=${ticker}/TON`} target="_blank" rel="noreferrer" 
+                 <a href={`https://swap.coffee/dex?pair=${ticker}_TON`} target="_blank" rel="noreferrer" 
                     className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-blue-400 uppercase tracking-widest flex items-center gap-2">
                          Spot <ExternalLink className="w-3 h-3" />
                      </span>
                  </a>
-                 <a href={`https://storm.trade/ton/futures/${ticker}-USDT`} target="_blank" rel="noreferrer" 
+                 <a href={`https://storm.trade/ton/futures/${ticker}-TON`} target="_blank" rel="noreferrer" 
                     className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-purple-400 uppercase tracking-widest flex items-center gap-2">
                          Short <ExternalLink className="w-3 h-3" />
                      </span>
                  </a>
             </div>
+
 
             {position.status === 'stasis_active' && (
                  <a href={`https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer"
@@ -174,13 +175,13 @@ export default function PositionDetailsBottomSheet({
                  </a>
             )}
 
-            {position.exitTxHash && position.status === 'closed' && (
-                 <a href={`https://tonviewer.com/transaction/${position.exitTxHash}`} target="_blank" rel="noreferrer"
+            {position.status === 'closed' && (
+                 <a href={`https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer"
                     className="w-full px-5 py-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl flex items-center justify-between hover:bg-emerald-500/10 transition-colors group">
                      <div className="flex items-center gap-3">
                          <ExternalLink className="w-4 h-4 text-emerald-400" />
                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                            View Exit Transaction
+                            View Exit Activity
                          </span>
                      </div>
                      <ExternalLink className="w-3 h-3 text-emerald-400" />
@@ -191,25 +192,24 @@ export default function PositionDetailsBottomSheet({
 
 
           {/* Actions */}
-          <div className="grid grid-cols-2 gap-3 pb-8">
             <button
-              onClick={() => onClosePosition(position.id)}
-              disabled={isProcessing || position.status === 'closed'}
-              className="py-5 bg-white/5 text-white/40 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => onExit(position.id)}
+              disabled={isProcessing || position.status === 'closed' || position.status === 'processing_exit'}
+              className="w-full py-5 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {position.status === 'closed' ? "Closed" : isProcessing ? "Processing..." : "Close & Settle"}
-            </button>
-            <button
-              onClick={() => onPanic(position.id)}
-              disabled={isProcessing || position.status === 'closed'}
-              className="py-5 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              PANIC EXIT
+              {isProcessing ? (
+                  <>Processing Exit...</>
+              ) : position.status === 'processing_exit' ? (
+                  <>Exit Pending Verification...</>
+              ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4" />
+                    Exit Position
+                  </>
+              )}
             </button>
           </div>
         </div>
-      </div>
     </>
   );
 }

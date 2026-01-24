@@ -99,13 +99,6 @@ export default function LandingPage() {
             </span>
           </div>
           <Link
-            href="/transparency"
-            className="flex items-center gap-2 bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all"
-          >
-            <Shield className="w-3 h-3" />
-            Transparency
-          </Link>
-          <Link
             href="/whitepaper"
             className="flex items-center gap-2 bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all"
           >

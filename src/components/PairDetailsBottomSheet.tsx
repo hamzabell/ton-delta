@@ -34,9 +34,8 @@ export default function PairDetailsBottomSheet({
   const { pair, isLoading: isPairLoading } = usePair(pairId || "");
 
   const [amount, setAmount] = useState("");
-  const [sessionDuration, setSessionDuration] = useState("7d");
   const [maxLoss, setMaxLoss] = useState("0");
-  const [stasisPreference, setStasisPreference] = useState<"CASH" | "STAKE">("STAKE");
+  const [stasisPreference, setStasisPreference] = useState<"CASH" | "STAKE">("CASH");
   const [isConfirming, setIsConfirming] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
@@ -96,7 +95,7 @@ export default function PairDetailsBottomSheet({
         // Determine initial status based on preference
         let initialStatus = undefined;
         if (isNegativeFunding) {
-            initialStatus = stasisPreference === 'STAKE' ? 'stasis_pending_stake' : 'stasis_active'; // Cash stasis is just active waiting
+            initialStatus = 'stasis_active'; // Cash stasis is just active waiting
         }
 
         await fetch('/api/positions', {
@@ -108,7 +107,6 @@ export default function PairDetailsBottomSheet({
                 userId: wallet.account.address,
                 vaultAddress: vaultAddressStr,
                 maxLossPercentage: (lossLimit / stakeAmount) || 0.20,
-                delegationDuration: sessionDuration,
                 txHash: txResult.boc,
                 // Smart Default Overrides
                 initialStatus,
@@ -117,7 +115,7 @@ export default function PairDetailsBottomSheet({
         });
       
         const message = isNegativeFunding 
-            ? `Vault Deployed in Stasis Mode (${stasisPreference === 'STAKE' ? 'Liquid Stake' : 'Cash'}).` 
+            ? `Vault Deployed in Stasis Mode (Cash).` 
             : "Strategy Deployed Successfully!";
             
         alert(message);
@@ -173,47 +171,15 @@ export default function PairDetailsBottomSheet({
             {/* Negative Funding Warning & Strategy Selector */}
             {isNegativeFunding && (
                 <div className="space-y-3">
-                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 flex items-start gap-3">
-                        <div className="p-1.5 bg-purple-500/20 rounded-full mt-0.5">
-                            <Shield className="w-3 h-3 text-purple-400" />
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex flex-col gap-2 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                        <div className="flex items-center gap-2">
+                             <Shield className="w-4 h-4 text-blue-400" />
+                             <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest">Safe Harbor Active</span>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-0.5">
-                                Negative Funding Protection
-                            </p>
-                            <p className="text-[10px] text-purple-200/60 leading-relaxed">
-                                Basis trade disabled. Choose how to preserve capital:
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
-                            onClick={() => setStasisPreference("STAKE")}
-                            className={clsx(
-                                "p-3 rounded-xl border text-left transition-all relative overflow-hidden",
-                                stasisPreference === "STAKE"
-                                    ? "bg-purple-500/20 border-purple-500 text-white"
-                                    : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                            )}
-                        >
-                            <div className="text-[9px] font-bold uppercase tracking-widest mb-1">Yield Hunter</div>
-                            <div className="text-xs font-black italic">Liquid Stake</div>
-                            <div className="text-[9px] opacity-60 mt-0.5">~4% APY</div>
-                        </button>
-                        <button
-                            onClick={() => setStasisPreference("CASH")}
-                            className={clsx(
-                                "p-3 rounded-xl border text-left transition-all relative overflow-hidden",
-                                stasisPreference === "CASH"
-                                    ? "bg-blue-500/20 border-blue-500 text-white"
-                                    : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                            )}
-                        >
-                            <div className="text-[9px] font-bold uppercase tracking-widest mb-1">Safe Harbor</div>
-                            <div className="text-xs font-black italic">Hold Cash</div>
-                            <div className="text-[9px] opacity-60 mt-0.5">0% Risk</div>
-                        </button>
+                        <p className="text-xs font-black text-white italic">Hold Cash Stasis</p>
+                        <p className="text-[10px] text-blue-200/60 leading-relaxed uppercase font-bold tracking-tight">
+                            Basis trade disabled due to negative funding. Funds will remain in TON within the vault to preserve capital.
+                        </p>
                     </div>
                 </div>
             )}
@@ -267,32 +233,14 @@ export default function PairDetailsBottomSheet({
                         <Settings2 className="w-3 h-3" /> Configuration
                     </span>
                      <span className="text-[9px] font-bold text-[#E2FF00] uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">
-                        {sessionDuration} • Max Loss {maxLoss} T
+                        Max Loss {maxLoss} T
                     </span>
                 </button>
 
                  {/* Collapsible Config */}
                  {showConfig && (
                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                         <div className="space-y-2">
-                             <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Duration</label>
-                             <div className="grid grid-cols-5 gap-1">
-                                {["1h", "24h", "7d", "30d", "1y"].map((d) => (
-                                    <button
-                                    key={d}
-                                    onClick={() => setSessionDuration(d)}
-                                    className={clsx(
-                                        "py-2 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all border",
-                                        sessionDuration === d
-                                        ? "bg-[#E2FF00] text-[#020617] border-[#E2FF00]"
-                                        : "bg-white/5 text-white/30 border-transparent hover:bg-white/10"
-                                    )}
-                                    >
-                                    {d}
-                                    </button>
-                                ))}
-                             </div>
-                         </div>
+                         {/* Duration removed as it's not a factor */}
                          <div className="space-y-2">
                              <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Stop Loss (TON)</label>
                              <input
@@ -313,19 +261,13 @@ export default function PairDetailsBottomSheet({
                         "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl",
                         !amount || (isConnected && balance === 0)
                             ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/5"
-                            : isNegativeFunding
-                                ? stasisPreference === 'STAKE' 
-                                    ? "bg-purple-500 text-white shadow-purple-500/20 hover:bg-purple-400"
-                                    : "bg-blue-500 text-white shadow-blue-500/20 hover:bg-blue-400"
-                                : "bg-[#E2FF00] text-[#020617] shadow-[#E2FF00]/20 hover:scale-[1.02]"
+                            : "bg-[#E2FF00] text-[#020617] shadow-[#E2FF00]/20 hover:scale-[1.02]"
                     )}
                 >
                     {isConfirming ? (
                         "Building Payload..." 
                     ) : isNegativeFunding ? (
-                         stasisPreference === 'STAKE' 
-                            ? <>Deploy Liquid Stake <Shield className="w-4 h-4" /></>
-                            : <>Deploy Cash Stasis <Shield className="w-4 h-4" /></>
+                          <>Deploy Cash Stasis <Shield className="w-4 h-4" /></>
                     ) : (
                         <>Deploy Strategy <Zap className="w-4 h-4" /></>
                     )}

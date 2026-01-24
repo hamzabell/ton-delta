@@ -36,9 +36,14 @@ export async function POST(
 
     await Logger.info('API', 'POSITION_EXIT_INITIATED', positionId, { txHash });
 
+    // Get the vault address to construct explorer link
+    const vaultAddress = position.vaultAddress || position.user.walletAddress;
+    const explorerLink = `https://tonviewer.com/${vaultAddress}`;
+
     return NextResponse.json({ 
       success: true, 
       txHash,
+      explorerLink,
       message: "Exit Sequence Initiated. Watch your wallet for the sweep." 
     });
 

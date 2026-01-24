@@ -92,7 +92,7 @@ model Position {
   delegationExpiry DateTime? // When the session key expires (backend enforced)
   delegationDuration String? // Original duration selected (e.g. "7d")
 
-  status          String   @default("active") // "active", "stasis", "closed"
+  status          String   @default("active") // "active", "stasis", "closed", "processing_exit", "stasis_pending_stake", "stasis_active", "pending_entry"
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

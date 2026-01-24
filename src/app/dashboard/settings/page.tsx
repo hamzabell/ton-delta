@@ -7,11 +7,14 @@ import {
   Wallet, 
   ChevronRight, 
   LogOut,
-  Moon,
-  Smartphone
+  Smartphone,
+  Lock,
+  Trash2
 } from "lucide-react";
 import { useTonWallet, useTonConnectUI } from "@tonconnect/ui-react";
 import clsx from "clsx";
+import { usePositions } from "@/hooks/usePositions";
+import { Address } from "@ton/core";
 
 export default function SettingsPage() {
   const wallet = useTonWallet();
@@ -29,6 +32,35 @@ export default function SettingsPage() {
 
   const handleDisconnect = () => {
     tonConnectUI.disconnect();
+  };
+
+  const { positions, isLoading: isPositionsLoading } = usePositions(null, wallet?.account.address);
+
+  const handleRevokeExtension = async (vaultAddress: string) => {
+    if (!wallet) return;
+
+    try {
+        const { buildRemoveExtensionBody } = await import("@/lib/w5-utils");
+        const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "");
+        
+        const payload = await buildRemoveExtensionBody(keeperAddress);
+
+        const messages = [{
+            address: vaultAddress,
+            amount: "50000000", // 0.05 TON for gas
+            payload: payload.toBoc().toString("base64")
+        }];
+
+        await tonConnectUI.sendTransaction({
+            messages,
+            validUntil: Date.now() + 5 * 60 * 1000 
+        });
+
+        alert("Revocation request sent!");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to revoke: " + (e as Error).message);
+    }
   };
 
   return (
@@ -118,6 +150,57 @@ export default function SettingsPage() {
                     </button>
                 </div>
             ))}
+        </div>
+      </section>
+
+      {/* Security & Extensions */}
+      <section className="space-y-4">
+        <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] px-1">
+          Security & Extensions
+        </h2>
+        <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 space-y-6">
+            <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-500 shrink-0">
+                    <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-white uppercase italic tracking-tight">Keeper Extension</h3>
+                    <p className="text-[10px] text-white/30 leading-relaxed mt-1 uppercase font-bold tracking-tight">
+                        The Keeper extension allows the protocol to manage your isolated vaults (rebalancing, funding protection). You can revoke this permission anytime.
+                    </p>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest pl-1">Active Vaults</p>
+                {isPositionsLoading ? (
+                    <div className="text-[10px] text-white/20 animate-pulse">Scanning for vaults...</div>
+                ) : positions.length === 0 ? (
+                    <div className="text-[10px] text-white/20 italic">No active vaults found</div>
+                ) : (
+                    <div className="space-y-2">
+                        {positions.filter(p => p.status !== 'closed' && p.vaultAddress).map(p => (
+                            <div key={p.id} className="bg-white/5 rounded-xl p-4 border border-white/5 flex items-center justify-between group hover:border-white/10 transition-colors">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-mono text-white/60">
+                                        {p.vaultAddress!.slice(0, 12)}...{p.vaultAddress!.slice(-8)}
+                                    </p>
+                                    <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest">
+                                        {p.pairId} • {p.status}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleRevokeExtension(p.vaultAddress!)}
+                                    className="p-2 bg-red-500/10 text-red-500 rounded-lg opacity-40 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                                    title="Revoke Keeper Extension"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
       </section>
 

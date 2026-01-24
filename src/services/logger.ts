@@ -1,5 +1,6 @@
 /* eslint-disable */
 
+import 'dotenv/config';
 import { prisma } from '../lib/prisma';
 
 export type LogLevel = 'INFO' | 'WARN' | 'ERROR';

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useState, useEffect } from 'react';
+import { useSWRConfig } from 'swr';
 import { ArrowLeft, Rocket, ShieldCheck, ChevronDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Slider } from "@/components/ui/slider";
@@ -32,7 +33,6 @@ export default function CreateCustomTradePage() {
   const [showPairSheet, setShowPairSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [fundingRate, setFundingRate] = useState<number>(0);
-  const [stasisPreference, setStasisPreference] = useState<"CASH" | "STAKE">("STAKE");
 
   const selectedPair = PAIRS.find(p => p.id === formData.pair) || PAIRS[0];
   const filteredPairs = PAIRS.filter(p => 
@@ -58,6 +58,9 @@ export default function CreateCustomTradePage() {
      fetchRate();
   }, [formData.pair]);
 
+  /* import { useSWRConfig } from 'swr'; (added at top) */
+  const { mutate } = useSWRConfig(); // Hook usage
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wallet || !formData.amount[0]) return;
@@ -65,36 +68,42 @@ export default function CreateCustomTradePage() {
     setIsSubmitting(true);
     
     try {
-        // 1. Prepare W5 Authorization Logic
-        const { buildAddExtensionBody } = await import("@/lib/w5-utils");
+        // 1. Prepare Vault Calculation
+        const { calculateVaultAddress } = await import("@/lib/w5-utils");
         const { Address, toNano } = await import("@ton/core");
+        const { Buffer } = await import("buffer");
         
         const userAddress = Address.parse(wallet.account.address);
-        // Keeper Address deals with Delegation
+        const userPublicKey = Buffer.from(wallet.account.publicKey || '', 'hex');
         const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || ""); 
-        // Treasury deals with Funds (Mock Vault)
-        const treasuryAddress = process.env.PAMELO_TREASURY_WALLET || keeperAddress.toString();
-
-        // 2. Build Payloads
-        const authPayload = await buildAddExtensionBody(userAddress, keeperAddress);
         
-        // 3. Construct Helper Message Bundle
-        // Msg 1: Install Extension (To Self)
+        // Use constant sub-wallet ID (0) to ensure "One Vault Per Wallet"
+        const subWalletId = 0;
+        
+        const { address: vaultAddress, stateInit } = await calculateVaultAddress(
+            userPublicKey,
+            keeperAddress,
+            subWalletId
+        );
+
+        // 2. Construct Deployment Message
+        // We send 0.1 TON to deploy the vault and provide initial gas.
+        // The stateInit ensures the vault is deployed with the keeper extension already registered.
         const messages = [
             {
-                address: wallet.account.address,
-                amount: toNano("0.05").toString(), 
-                payload: authPayload.toBoc().toString("base64")
+                address: vaultAddress.toString(),
+                amount: toNano("0.1").toString(), 
+                stateInit: stateInit.toBoc().toString("base64")
             }
         ];
 
-        // 4. Send Transaction (One User Signature)
+        // 3. Send Transaction (User deploys their own isolated vault)
         const txResult = await tonConnectUI.sendTransaction({
             messages: messages,
             validUntil: Date.now() + 5 * 60 * 1000 
         });
         
-        // 5. Create Backend Position Record
+        // 4. Create Backend Position Record
         const res = await fetch('/api/positions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -103,21 +112,29 @@ export default function CreateCustomTradePage() {
                 capitalTON: formData.amount[0],
                 userId: wallet.account.address, 
                 txHash: txResult.boc,
+                vaultAddress: vaultAddress.toString(),
                 // Negative Funding Override
-                initialStatus: fundingRate < 0 
-                  ? (stasisPreference === 'STAKE' ? 'stasis_pending_stake' : 'stasis') 
-                  : undefined,
-                stasisPreference: fundingRate < 0 ? stasisPreference : 'CASH'
+                initialStatus: fundingRate < 0 ? 'stasis_active' : undefined,
+                stasisPreference: 'CASH',
+                maxLossPercentage: formData.stopLoss[0] / 100
             })
         });
         
         if (!res.ok) throw new Error("Failed to create position record");
 
         const message = fundingRate < 0 
-            ? `Vault Deployed in Stasis Mode (${stasisPreference === 'STAKE' ? 'Liquid Stake' : 'Cash'}).`
+            ? `Vault Deployed in Stasis Mode (Cash).`
             : "Custom Trade Deployed Successfully!\nW5 Authorization Sent.";
 
         alert(message);
+
+        // Invalidate cache to ensure new position shows up
+        await mutate(
+            (key: any) => typeof key === 'string' && key.startsWith('/api/positions'),
+            undefined,
+            { revalidate: true }
+        );
+
         router.push("/dashboard/portfolio");
 
     } catch (e) {
@@ -187,43 +204,12 @@ export default function CreateCustomTradePage() {
                   <div className="grid grid-cols-1">
                       {fundingRate < 0 ? (
                           <div className="space-y-3">
-                              <div className="p-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.1)]">
-                                  <div className="text-sm font-black uppercase mb-1 italic flex items-center gap-2">
-                                      <ShieldCheck className="w-4 h-4" /> Negative Funding Protection
+                              <div className="grid grid-cols-1">
+                                  <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-white/80">
+                                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-blue-400">Safe Harbor</div>
+                                      <div className="text-sm font-black italic">Cash Stasis</div>
+                                      <div className="text-[10px] opacity-60 mt-0.5">Your funds remain in TON within the vault, avoiding short liquidation and negative funding costs.</div>
                                   </div>
-                                  <div className="text-[10px] leading-tight opacity-80 uppercase tracking-widest font-bold">
-                                      Basis trade is disabled. Choose a capital preservation strategy:
-                                  </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => setStasisPreference("STAKE")}
-                                    className={clsx(
-                                        "p-4 rounded-xl border text-left transition-all relative overflow-hidden",
-                                        stasisPreference === "STAKE"
-                                            ? "bg-purple-500/20 border-purple-500 text-white"
-                                            : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                                    )}
-                                  >
-                                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1">Yield Hunter</div>
-                                      <div className="text-sm font-black italic">Liquid Stake</div>
-                                      <div className="text-[10px] opacity-60 mt-0.5">~4% APY</div>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setStasisPreference("CASH")}
-                                    className={clsx(
-                                        "p-4 rounded-xl border text-left transition-all relative overflow-hidden",
-                                        stasisPreference === "CASH"
-                                            ? "bg-blue-500/20 border-blue-500 text-white"
-                                            : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                                    )}
-                                  >
-                                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1">Safe Harbor</div>
-                                      <div className="text-sm font-black italic">Hold Cash</div>
-                                      <div className="text-[10px] opacity-60 mt-0.5">0% Risk</div>
-                                  </button>
                               </div>
                           </div>
                       ) : (

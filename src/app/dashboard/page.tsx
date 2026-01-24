@@ -254,8 +254,8 @@ export default function OpportunitiesPage() {
                            <Shield className="w-3 h-3 text-emerald-500 fill-emerald-500/20" />
                       )}
                       {pair.fundingRate < 0 && (
-                          <span className="text-[8px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded ml-1 border border-purple-500/20">
-                              Liquid Stake Only
+                          <span className="text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded ml-1 border border-blue-500/20">
+                              Cash Stasis Only
                           </span>
                       )}
                   </div>

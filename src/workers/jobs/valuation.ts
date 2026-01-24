@@ -17,7 +17,7 @@ export const valuationJob = async (job: Job) => {
 
     try {
         const positions = await prisma.position.findMany({
-            where: { status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } },
+            where: { status: { in: ['active', 'stasis'] } },
             include: { user: true }
         });
 

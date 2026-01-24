@@ -22,8 +22,26 @@ export async function buildAddExtensionBody(
     }];
 
     // V5R1: Internal messages from "Self" execute actions packed in body.
-    // Use storeOutListExtendedV5R1 to pack them.
+    // Must be prefixed with 0x706c7573 ('plus') opcode.
     return beginCell()
+        .storeUint(0x706c7573, 32)
+        .store(storeOutListExtendedV5R1(actions))
+        .endCell();
+}
+
+/**
+ * Builds the payload for removing an extension from a Wallet V5R1.
+ */
+export async function buildRemoveExtensionBody(
+  extensionAddress: Address
+): Promise<Cell> {
+    const actions: OutActionWalletV5[] = [{
+        type: 'removeExtension',
+        address: extensionAddress
+    }];
+
+    return beginCell()
+        .storeUint(0x706c7573, 32)
         .store(storeOutListExtendedV5R1(actions))
         .endCell();
 }
@@ -53,6 +71,28 @@ export async function wrapWithKeeperRequest(
         });
     }
 
+    // --- SELF-REFUELING MECHANISM ---
+    // Automatically reimburse the Keeper for gas costs (~0.05 TON)
+    const keeperAddrStr = process.env.NEXT_PUBLIC_KEEPER_ADDRESS;
+    if (keeperAddrStr) {
+        try {
+            const keeperAddress = Address.parse(keeperAddrStr);
+            console.log(`[W5-Utils] Appending Gas Refund (0.05 TON) to Keeper: ${keeperAddress.toString()}`);
+            
+            actions.push({
+                type: 'sendMsg',
+                mode: SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS, 
+                outMsg: internal({
+                    to: keeperAddress,
+                    value: toNano("0.05"), // Refund 0.05 TON
+                    body: new Cell() // Empty body
+                })
+            });
+        } catch (e) {
+            console.error("[W5-Utils] Failed to parse Keeper Address for refund:", e);
+        }
+    }
+
     return buildKeeperRequest(userAddress, actions);
 }
 
@@ -69,10 +109,14 @@ export async function buildKeeperRequest(
         publicKey: Buffer.alloc(32)
     });
 
+    // W5 Requests require a valid timeout. 0 might be interpreted as "already expired" by some implementations.
+    // We set it to 60 seconds from now.
+    const timeout = Math.floor(Date.now() / 1000) + 60;
+
     return dummy.createRequest({
         seqno: 0, 
         authType: 'extension',
-        timeout: 0,
+        timeout: timeout,
         actions: actions
     });
 }
@@ -81,10 +125,14 @@ export async function buildKeeperRequest(
 /**
  * Calculates the future address of a new Isolated W5 Vault.
  * The Vault is owned by the User, but has the Keeper pre-installed as an extension.
+ * @param userPublicKey The public key of the owner user
+ * @param keeperAddress The address of the keeper extension to pre-install
+ * @param subWalletId Optional unique ID for the sub-wallet (for isolated vaults)
  */
 export async function calculateVaultAddress(
     userPublicKey: Buffer,
-    keeperAddress: Address
+    keeperAddress: Address,
+    subWalletId?: number
 ): Promise<{ address: Address, stateInit: Cell }> {
     const { Dictionary, beginCell } = await import("@ton/core");
     
@@ -95,22 +143,17 @@ export async function calculateVaultAddress(
     });
 
     // 2. Parse the default data to reconstruct it with extensions
-    // Default Data Layout: isSigAllowed (1) | seqno (32) | walletId (32) | publicKey (256) | extensions (Dict)
     const dataSlice = wallet.init.data.beginParse();
     const isSigAllowed = dataSlice.loadBit();
     const seqno = dataSlice.loadUint(32);
-    const walletId = dataSlice.loadUint(32);
+    const defaultWalletId = dataSlice.loadUint(32);
     const pubKey = dataSlice.loadBuffer(32);
-    // dataSlice.loadBit() // Skip empty dict bit (0) which is what normal create() produces
+    
+    // Use the provided subWalletId or the default one
+    const targetWalletId = subWalletId !== undefined ? subWalletId : defaultWalletId;
     
     // 3. Create Extensions Dictionary
-    // Key: Address Hash (256), Value: Int(1) (implied checks usually just check existence)
     const extensions = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.BigInt(1));
-    
-    // Add Keeper Address. The value 1n commonly denotes "enabled".
-    // Important: W5 spec usually maps hash -> wc (int8). 
-    // However, @ton/ton implementation uses BigInt(1) for value serialization in getExtensionsArray.
-    // We will stick to -1n (True in 1-bit signed).
     const keeperHash = BigInt("0x" + keeperAddress.hash.toString('hex'));
     extensions.set(keeperHash, BigInt(-1));
 
@@ -118,9 +161,9 @@ export async function calculateVaultAddress(
     const fixedData = beginCell()
         .storeBit(isSigAllowed)
         .storeUint(seqno, 32)
-        .storeUint(walletId, 32)
+        .storeUint(targetWalletId, 32)
         .storeBuffer(pubKey, 32)
-        .storeDict(extensions) // Store our non-empty dictionary
+        .storeDict(extensions)
         .endCell();
 
     // 5. Calculate Address

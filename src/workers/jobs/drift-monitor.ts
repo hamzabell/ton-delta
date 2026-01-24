@@ -9,21 +9,39 @@ import { fromNano } from '@ton/core';
 export async function driftMonitorJob(job: Job) {
   const { positionId } = job.data;
   
+  if (positionId) {
+    return await processPositionDrift(positionId);
+  }
+
+  // Global Check: Fetch all active positions
+  const activePositions = await prisma.position.findMany({
+    where: { status: 'active' }
+  });
+
+  const results = [];
+  for (const position of activePositions) {
+    try {
+      const result = await processPositionDrift(position.id);
+      results.push({ positionId: position.id, ...result });
+    } catch (err) {
+      console.error(`[Watchman] Failed to process drift for ${position.id}:`, err);
+      results.push({ positionId: position.id, error: String(err) });
+    }
+  }
+
+  return { processed: activePositions.length, results };
+}
+
+async function processPositionDrift(positionId: string) {
   const position = await prisma.position.findUnique({
     where: { id: positionId },
     include: { user: true }
   });
 
-  if (!position || position.status !== 'active') return;
-
-
+  if (!position || position.status !== 'active') return { skipped: true };
 
   try {
       // 1. Fetch Real Spot Balance
-      // Assume Pair ID "ticker-ton" => Spot is Ticker? Or "ton-usdt" => Spot is TON?
-      // For "Basis Trade" usually: Long Spot, Short Perp.
-      // If pair is "TON-USDT", Spot is TON.
-      // If pair is "DOGS-TON", Spot is DOGS.
       const ticker = position.pairId.split('-')[0].toUpperCase();
       const vaultAddr = position.vaultAddress || position.user?.walletAddress;
       if (!vaultAddr) throw new Error('No vault address found for position');
@@ -33,16 +51,11 @@ export async function driftMonitorJob(job: Job) {
           const bal = await getTonBalance(vaultAddr);
           realSpotAmount = Number(fromNano(bal));
       } else {
-          // TODO: Need Minter Address for Jetton. 
-          // For now, assuming TON-only for MVP or failing gracefully.
-          // In real app, we'd lookup Minter from Config or DB.
-          // Fallback to TON balance if ticker is ambiguous or just log warning.
           console.warn(`[Watchman] Jetton checking not fully configured for ${ticker}. Using DB Spot Amount.`);
           realSpotAmount = position.spotAmount; 
       }
 
       // 2. Fetch Real Perp Position
-      // This will throw if SDK is missing (current state)
       const perpPos = await firstValueFrom(getPosition$(ticker, vaultAddr));
       const realPerpAmount = perpPos.amount;
 
@@ -68,7 +81,7 @@ export async function driftMonitorJob(job: Job) {
   } catch (err: unknown) {
       const e = err instanceof Error ? err : new Error(String(err));
       console.error(`[Watchman] CRITICAL: Failed to verify on-chain state for ${positionId}. Skipping logic.`, e.message);
-      // "Only DB for logging" -> We do NOT fall back to DB logic. We skip.
       return { error: e.message };
   }
 }
+
