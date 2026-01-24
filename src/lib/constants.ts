@@ -10,10 +10,6 @@ export const API_CONFIG = {
   },
   ton: {
     rpcUrl: CURRENT_NETWORK.tonApi,
-  },
-  dedust: {
-    // DeDust public API - mainnet only
-    poolsUrl: 'https://api.dedust.io/v2/pools',
   }
 };
 

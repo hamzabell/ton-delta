@@ -2,24 +2,60 @@ import { NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/constants';
 import { IS_TESTNET } from '@/lib/config';
 
-const DEDUST_API = API_CONFIG.dedust.poolsUrl;
+const STONFI_ASSETS_API = 'https://api.ston.fi/v1/assets';
 
-// Known categories for auto-tagging
+// Fetch authoritative assets from Ston.fi (TON Native)
+async function fetchStonFiAssets(): Promise<Record<string, string>> {
+    try {
+        const res = await fetch(STONFI_ASSETS_API, { 
+            next: { revalidate: 3600 } // Cache for 1 hour
+        });
+        if (!res.ok) return {};
+        const data = await res.json();
+        const iconMap: Record<string, string> = {};
+        
+        // Sort by priority desc to ensure we get the "official" token first
+        const assets = (data.asset_list || []).sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
+
+        assets.forEach((a: any) => {
+            if (a.blacklisted) return;
+            const symbol = a.symbol.toUpperCase();
+            if (symbol && a.image_url && !iconMap[symbol]) {
+                iconMap[symbol] = a.image_url;
+            }
+        });
+        
+        // Add manual overrides for major global assets if missing or specific preference
+        if (!iconMap['BTC']) iconMap['BTC'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/btc.png';
+        if (!iconMap['ETH']) iconMap['ETH'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/eth.png';
+        if (!iconMap['SOL']) iconMap['SOL'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/sol.png';
+        
+        return iconMap;
+    } catch (e) {
+        console.error('Failed to fetch Ston.fi assets:', e);
+        return {};
+    }
+}
+
 const CATEGORY_MAP: Record<string, string> = {
-  'DOGS': 'Meme',
-  'NOT': 'GameFi',
-  'REDO': 'Meme',
-  'HMSTR': 'GameFi',
-  'CATI': 'GameFi',
-  'STON': 'DeFi',
-  'GRAM': 'Meme',
-  'FISH': 'Meme',
-  'BOLT': 'Meme',
-  'PUNK': 'NFT',
-  'RAFF': 'DeFi',
-  'SCALE': 'DeFi',
-  'USDT': 'Stable',
-  'JUSDT': 'Stable'
+  'DOGS': 'Meme', 'REDO': 'Meme', 'FISH': 'Meme', 'BOLT': 'Meme', 'GRAM': 'Meme',
+  'POPCAT': 'Meme', 'PNUT': 'Meme', 'PENGU': 'Meme', 'BONK': 'Meme', 'TRUMP': 'Meme',
+  'WIF': 'Meme', 'PEPE': 'Meme', 'DOGE': 'Crypto',
+  'NOT': 'GameFi', 'HMSTR': 'GameFi', 'CATI': 'GameFi', 'MAJOR': 'GameFi', 'MEMEFI': 'GameFi',
+  'STON': 'DeFi', 'RAFF': 'DeFi', 'SCALE': 'DeFi', 'JUP': 'DeFi',
+  'USDT': 'Stable', 'JUSDT': 'Stable',
+  'TON': 'Native', 'BTC': 'Crypto', 'ETH': 'Crypto', 'SOL': 'Crypto'
+};
+
+const resolveIcon = (symbol: string, assetsMap: Record<string, string>) => {
+    const upper = symbol.toUpperCase();
+    const clean = upper.startsWith('1000') ? upper.replace('1000', '') : upper;
+    
+    if (assetsMap[clean]) return assetsMap[clean];
+    if (assetsMap[upper]) return assetsMap[upper];
+    
+    // Fallback generic
+    return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/generic.png`;
 };
 
 // Simple in-memory cache
@@ -32,167 +68,106 @@ export async function GET(request: Request) {
     const now = Date.now();
     const url = new URL(request.url);
     const forceRefresh = url.searchParams.get('force') === 'true';
-    const uniquePairs = cachedPairs;
+    let uniquePairs = cachedPairs; // Changed from const to let to allow re-assignment
 
     // Refresh cache if empty, expired, or force refresh requested
     if (!cachedPairs.length || (now - lastFetchTime) > CACHE_DURATION || forceRefresh) {
         console.log('[PAIRS API] Fetching pairs due to cache miss/expiry/force...');
-        let uniquePairs: any[] = [];
+        uniquePairs = []; // Initialize uniquePairs here for the refresh logic
 
-        // BRANCH: TESTNET (Use Storm Trade API)
-        if (IS_TESTNET) {
-             console.log('[PAIRS API] Mode: TESTNET (Source: Storm Trade)');
-             const stormUrl = `${API_CONFIG.stormTrade.baseUrl}/pairs`;
-             console.log('[PAIRS API] Fetching:', stormUrl);
-             
-             try {
-                // Disable SSL verification for development if needed, or just try standard fetch
-                // Note: In Node.js environment we might need an agent to ignore SSL if the testnet cert is bad
-                // But generally next.js fetch should work.
-                const res = await fetch(stormUrl, { 
-                    next: { revalidate: 30 },
-                    signal: AbortSignal.timeout(10000)
-                });
-                
-                if (!res.ok) throw new Error(`Storm API Failed: ${res.status}`);
-                const data = await res.json();
-                const pairs = Array.isArray(data) ? data : data.pairs || [];
+        const vaultAddress = 'EQDpJnZP89Jyxz3euDaXXFUhwCWtaOeRmiUJTi3jGYgF8fnj'; // Mainnet Vault
 
-                uniquePairs = pairs.map((p: any) => {
-                    const id = p.symbol.toLowerCase().replace('_', '-');
-                    const [base, quote] = p.symbol.split(/-|_/);
-                    
-                    if (quote !== 'TON') return null;
+        // Fetch Data Sources in Parallel
+        const [stormRes, stonFiAssets] = await Promise.all([
+             IS_TESTNET 
+                ? fetch(`${API_CONFIG.stormTrade.baseUrl}/pairs`, { next: { revalidate: 30 } })
+                : fetch(`https://api5.storm.tg/lite/api/v0/vault/${vaultAddress}/markets`, { next: { revalidate: 300 } }),
+             fetchStonFiAssets()
+        ]);
 
-                    const lastPrice = parseFloat(p.lastPrice);
-                    const fundingRate = parseFloat(p.fundingRate || '0');
-                    
-                    const liquidity = parseFloat(p.liquidity || '0');
-
-
-                    const isConservative = (CATEGORY_MAP[base] === 'Stable' || CATEGORY_MAP[base] === 'DeFi') || liquidity > 1000000;
-                    const isMedium = liquidity > 100000 && liquidity <= 1000000;
-                    
-                    let riskLevel: 'Conservative' | 'Medium' | 'High' = 'High';
-                    if (isConservative) riskLevel = 'Conservative';
-                    else if (isMedium) riskLevel = 'Medium';
-
-                    const apr = (fundingRate * 24 * 365 * 100);
-                    // Hot logic: APR > 100% or Volume > 50k
-                    const isHot = apr > 100 || parseFloat(p.volume24h || '0') > 50000;
-
-                    return {
-                        id,
-                        name: `${base} / ${quote}`,
-                        spotToken: base,
-                        baseToken: quote,
-                        apr, 
-                        fundingRate: fundingRate * 100,
-                        volume24h: parseFloat(p.volume24h || '0'),
-                        liquidity, 
-                        risk: riskLevel, 
-                        category: CATEGORY_MAP[base] || 'Meme',
-                        icon: '⚡', 
-                        tvl: liquidity,
-                        isHot
-                    };
-                }).filter(Boolean);
-
-             } catch (err) {
-                 console.error('[PAIRS API] Storm Fetch Error:', err);
-                 throw err; // Propagate error so we see it in logs instead of silent fallback
-             }
-
-        } 
-        // BRANCH: MAINNET (Use DeDust API)
-        else {
-             console.log('[PAIRS API] Mode: MAINNET (Source: DeDust)');
-             const res = await fetch(DEDUST_API, { 
-                 signal: AbortSignal.timeout(30000)
-             });
-             
-             // ... DeDust parsing logic (existing) ...
-             if (!res.ok) throw new Error(`DeDust API Failed with status ${res.status}`);
-
-             const pools = await res.json();
-             const uniquePairsMap = new Map();
-            
-             for (const p of pools) {
-                 const hasTon = p.assets.some((a: any) => a.type === 'native' && a.metadata?.symbol === 'TON');
-                 if (!hasTon) continue;
-
-                 const tonIndex = p.assets.findIndex((a: any) => a.type === 'native' && a.metadata?.symbol === 'TON');
-                 const tokenIndex = tonIndex === 0 ? 1 : 0;
-                 const tokenAsset = p.assets[tokenIndex];
-
-                 if (!tokenAsset || !tokenAsset.metadata || tokenAsset.metadata.symbol?.includes('USD')) continue;
-
-                 let reserves = BigInt(0);
-                 try {
-                    if (p.reserves && p.reserves[0]) {
-                        reserves = BigInt(p.reserves[0]);
-                    }
-                 } catch (e) {
-                     continue; 
-                 }
-                 
-                 if (reserves <= BigInt(1000000000)) continue;
-
-                 const symbol = tokenAsset.metadata.symbol;
-                 const id = `${symbol.toLowerCase()}-ton`;
-
-                 const tonReserves = parseFloat(p.reserves[tonIndex]) / 1e9;
-                 const liquidity = tonReserves * 2; 
-
-                 const existing = uniquePairsMap.get(id);
-                 if (existing && existing.liquidity >= liquidity) continue;
-
-                 const name = `${symbol} / TON`;
-                 const volTon = parseFloat(p.stats.volume[tonIndex]) / 1e9;
-                 const feesTon = parseFloat(p.stats.fees[tonIndex]) / 1e9;
-                 
-                 let apr = liquidity > 0 ? ((feesTon * 365) / liquidity) * 100 : 0;
-                 
-                 if (apr === 0 && CATEGORY_MAP[symbol]) {
-                      apr = 50 + Math.random() * 100;
-                 } else if (apr === 0) {
-                      apr = 10 + Math.random() * 20; 
-                 }
-
-                const isConservative = (CATEGORY_MAP[symbol] === 'Stable' || CATEGORY_MAP[symbol] === 'DeFi') || liquidity > 1000000;
-                  const isMedium = liquidity > 100000 && liquidity <= 1000000;
-                  
-                  let riskLevel: 'Conservative' | 'Medium' | 'High' = 'High';
-                  if (isConservative) riskLevel = 'Conservative';
-                  else if (isMedium) riskLevel = 'Medium';
-                  
-                  // Hot logic: APR > 100% or Volume > 50k
-                  const isHot = apr > 100 || volTon > 50000;
-
-                 const pair = {
-                    id,
-                    name,
-                    spotToken: symbol,
-                    baseToken: 'TON',
-                    apr: parseFloat(apr.toFixed(1)),
-                    fundingRate: (apr / 365 / 24) / 100,
-                    volume24h: volTon,
-                    liquidity: liquidity,
-                    risk: riskLevel,
-                    category: CATEGORY_MAP[symbol] || 'Meme',
-                    icon: tokenAsset.metadata.image || '?',
-                    tvl: liquidity,
-                    isHot
-                };
-
-                uniquePairsMap.set(id, pair);
-            }
-            uniquePairs = Array.from(uniquePairsMap.values());
-        }
+        if (!stormRes.ok) throw new Error(`Storm API Failed: ${stormRes.status}`);
         
+        // Parse Storm Data (Handle both Testnet Array and Mainnet Vault format)
+        let stormData = await stormRes.json();
+        let rawMarkets: any[] = [];
+        
+        if (IS_TESTNET) {
+             rawMarkets = Array.isArray(stormData) ? stormData : stormData.pairs || [];
+        } else {
+             rawMarkets = stormData; // Vault endpoint returns array directly
+        }
+
+        uniquePairs = rawMarkets.map((m: any) => {
+            // Unify Data Structure
+            let base, quote, lastPrice, liquidity, fundingRate, volume24h;
+
+            if (IS_TESTNET) {
+                base = m.symbol.split(/-|_/)[0];
+                quote = m.symbol.split(/-|_/)[1];
+                lastPrice = parseFloat(m.lastPrice);
+                liquidity = parseFloat(m.liquidity || '0');
+                fundingRate = parseFloat(m.fundingRate || '0');
+                volume24h = parseFloat(m.volume24h || '0');
+            } else {
+                base = m.name;
+                quote = 'TON'; // Vault markets are always vs Collateral (TON)
+                lastPrice = parseFloat(m.oracle_last_price) / 1e9;
+                liquidity = parseFloat(m.amm_state?.quote_asset_reserve || '0') / 1e9;
+                
+                // Rate Calc
+                const totalLong = parseFloat(m.amm_state?.open_interest_long || '1');
+                const totalShort = parseFloat(m.amm_state?.open_interest_short || '1');
+                const skew = (totalLong - totalShort) / (totalLong + totalShort + 1000);
+                const hourlyRate = 0.0001 + (Math.abs(skew) * 0.0004);
+                fundingRate = skew >= 0 ? hourlyRate : -hourlyRate;
+                volume24h = 0; // Not provided in simple vault view
+            }
+
+            if (quote !== 'TON') return null;
+
+            const id = `${base.toLowerCase()}-ton`;
+            const name = `${base} / TON`;
+            
+            const apr = Math.abs(fundingRate) * 24 * 365 * 100;
+            const category = CATEGORY_MAP[base] || 'Perp';
+            
+            // Risk logic
+            const isConservative = (category === 'Stable' || category === 'DeFi') || liquidity > 1000000;
+            const isMedium = liquidity > 100000 && liquidity <= 1000000;
+            let riskLevel: 'Conservative' | 'Medium' | 'High' = 'High';
+            if (isConservative) riskLevel = 'Conservative';
+            else if (isMedium) riskLevel = 'Medium';
+
+            const isHot = apr > 100 || volume24h > 50000;
+
+            const icon = resolveIcon(base, stonFiAssets);
+            
+            // Strict Validation: Ensure we have a valid icon (implies confirmed TON Native / Whitelisted asset)
+            // If we fall back to generic, we assume it's not a verified token we want to list.
+            if (icon.includes('generic.png') && base !== 'TON') {
+                return null;
+            }
+
+            return {
+                id,
+                name,
+                spotToken: base,
+                baseToken: 'TON',
+                apr: parseFloat(apr.toFixed(1)),
+                fundingRate: parseFloat(fundingRate.toFixed(6)),
+                volume24h, 
+                liquidity: parseFloat(liquidity.toFixed(2)),
+                risk: riskLevel,
+                category,
+                icon, 
+                tvl: parseFloat(liquidity.toFixed(2)),
+                isHot
+            };
+        }).filter(Boolean);
+
+        console.log(`[PAIRS API] Returned ${uniquePairs.length} markets`);
         cachedPairs = uniquePairs;
         lastFetchTime = now;
-        console.log('[PAIRS API] Cache updated with', uniquePairs.length, 'pairs');
     } else {
         console.log('[PAIRS API] Using cached pairs:', cachedPairs.length);
     }

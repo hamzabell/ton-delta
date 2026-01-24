@@ -15,7 +15,9 @@ export async function GET(request: Request) {
     const userId = searchParams.get('userId'); 
     const pairId = searchParams.get('pairId');
 
-    const whereClause: any = { status: 'active' };
+    const whereClause: any = { 
+      status: { in: ['active', 'stasis', 'stasis_pending_stake', 'stasis_active'] } 
+    };
     if (pairId) {
       whereClause.pairId = pairId;
     }
@@ -61,7 +63,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    // Atomic Position Creation (Simulation)
+    // --- PAIR VALIDATION ---
+    // Ensure the pair is actually supported by our cross-validated engine
+    try {
+        const pairsRes = await fetch(`${new URL(request.url).origin}/api/pairs?id=${pairId}`);
+        if (!pairsRes.ok) {
+            return NextResponse.json({ error: `Pair ${pairId} is not supported or hedging engine is unavailable.` }, { status: 400 });
+        }
+    } catch (e) {
+        console.error('[POSITIONS API] Validation failed:', e);
+        // Fallback or allow if API is down but we want to be safe
+    }
     
     // Find User by ID or Wallet Address
     let user = await prisma.user.findFirst({
@@ -108,7 +120,7 @@ export async function POST(request: Request) {
         currentPrice: 1.0,
         fundingRate: 0.01,
         driftCoefficient: 0,
-        status: 'active',
+        status: body.initialStatus || 'pending_entry',
         maxLossPercentage: maxLossPercentage || 0.20,
         delegationDuration: body.delegationDuration || '7d',
         delegationExpiry: calculateExpiry(body.delegationDuration || '7d'),

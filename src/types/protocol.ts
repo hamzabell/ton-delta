@@ -11,10 +11,14 @@ export interface Position {
   fundingRateEMA: number; // 24h EMA
   driftCoefficient: number; // δ_drift
   principalFloor: number;   // E_floor
-  status: 'active' | 'stasis' | 'emergency';
+  status: 'active' | 'stasis' | 'emergency' | 'closed' | 'stasis_pending_stake' | 'stasis_active' | 'pending_entry';
   createdAt: string;
   updatedAt: string;
+  lastRebalanced?: string | Date; // Added for UI compatibility
   auditLogs?: any[];
+  vaultAddress?: string;
+  user?: { walletAddress: string };
+  exitTxHash?: string;
 }
 
 export interface TradingPair {

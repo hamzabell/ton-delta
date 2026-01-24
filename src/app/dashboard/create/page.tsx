@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { Suspense, useState, useEffect } from 'react';
 import { ArrowLeft, Rocket, ShieldCheck, ChevronDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Slider } from "@/components/ui/slider";
@@ -9,10 +9,10 @@ import clsx from "clsx";
 import { useRouter } from "next/navigation";
 
 const PAIRS = [
-  { id: "ton-usdt", label: "TON / USDT", base: "TON", quote: "USDT", icon: "T" },
-  { id: "ton-btc", label: "TON / BTC", base: "TON", quote: "BTC", icon: "T" },
-  { id: "ton-eth", label: "TON / ETH", base: "TON", quote: "ETH", icon: "T" },
-  { id: "not-usdt", label: "NOT / USDT", base: "NOT", quote: "USDT", icon: "N" },
+  { id: "ton-usdt", label: "TON / USDT", base: "TON", quote: "USDT", icon: "https://asset.ston.fi/img/EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c/image.png" },
+  { id: "ton-btc", label: "TON / BTC", base: "TON", quote: "BTC", icon: "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/btc.png" },
+  { id: "ton-eth", label: "TON / ETH", base: "TON", quote: "ETH", icon: "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/eth.png" },
+  { id: "not-usdt", label: "NOT / USDT", base: "NOT", quote: "USDT", icon: "https://asset.ston.fi/img/EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT/image.png" },
 ];
 
 export default function CreateCustomTradePage() {
@@ -31,6 +31,8 @@ export default function CreateCustomTradePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPairSheet, setShowPairSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [fundingRate, setFundingRate] = useState<number>(0);
+  const [stasisPreference, setStasisPreference] = useState<"CASH" | "STAKE">("STAKE");
 
   const selectedPair = PAIRS.find(p => p.id === formData.pair) || PAIRS[0];
   const filteredPairs = PAIRS.filter(p => 
@@ -38,6 +40,23 @@ export default function CreateCustomTradePage() {
     p.base.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.quote.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  // Effect to fetch real-time funding rate
+  useEffect(() => {
+     const fetchRate = async () => {
+         try {
+             // Only fetch if pair ID is valid
+             if (!formData.pair) return;
+             
+             const res = await fetch(`/api/pairs?id=${formData.pair}`);
+             if (res.ok) {
+                 const data = await res.json();
+                 setFundingRate(data.fundingRate || 0);
+             }
+         } catch(e) { console.error("Failed to fetch rate", e); }
+     };
+     fetchRate();
+  }, [formData.pair]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,14 +101,23 @@ export default function CreateCustomTradePage() {
             body: JSON.stringify({
                 pairId: formData.pair,
                 capitalTON: formData.amount[0],
-                userId: wallet.account.address, // Use wallet as ID for now
-                txHash: txResult.boc // Store BOC/Hash if needed
+                userId: wallet.account.address, 
+                txHash: txResult.boc,
+                // Negative Funding Override
+                initialStatus: fundingRate < 0 
+                  ? (stasisPreference === 'STAKE' ? 'stasis_pending_stake' : 'stasis') 
+                  : undefined,
+                stasisPreference: fundingRate < 0 ? stasisPreference : 'CASH'
             })
         });
         
         if (!res.ok) throw new Error("Failed to create position record");
 
-        alert(`Custom Trade Deployed Successfully!\nW5 Authorization Sent.`);
+        const message = fundingRate < 0 
+            ? `Vault Deployed in Stasis Mode (${stasisPreference === 'STAKE' ? 'Liquid Stake' : 'Cash'}).`
+            : "Custom Trade Deployed Successfully!\nW5 Authorization Sent.";
+
+        alert(message);
         router.push("/dashboard/portfolio");
 
     } catch (e) {
@@ -130,8 +158,12 @@ export default function CreateCustomTradePage() {
                     className="w-full flex items-center justify-between p-5 bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-2xl transition-all"
                   >
                       <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center font-black text-lg">
-                              {selectedPair.icon}
+                          <div className="w-10 h-10 rounded-full bg-slate-800 text-blue-400 flex items-center justify-center font-black text-lg overflow-hidden border border-white/10">
+                              {selectedPair.icon.startsWith('http') ? (
+                                  <img src={selectedPair.icon} alt={selectedPair.label} className="w-full h-full object-cover" />
+                              ) : (
+                                  selectedPair.icon
+                              )}
                           </div>
                           <div className="text-left">
                               <p className="font-bold text-white">{selectedPair.label}</p>
@@ -142,17 +174,64 @@ export default function CreateCustomTradePage() {
                   </button>
               </div>
 
-              {/* Direction Selection (Fixed for V1) */}
+              {/* Direction Selection */}
               <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Basis Direction</label>
-                      <span className="text-[10px] font-black text-[#E2FF00] uppercase tracking-widest bg-[#E2FF00]/10 px-2 py-0.5 rounded italic">V1 Standard</span>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Strategy Mode</label>
+                      {fundingRate < 0 ? (
+                           <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest bg-purple-500/10 px-2 py-0.5 rounded italic">Negative Funding Protection</span>
+                      ) : (
+                           <span className="text-[10px] font-black text-[#E2FF00] uppercase tracking-widest bg-[#E2FF00]/10 px-2 py-0.5 rounded italic">V1 Standard</span>
+                      )}
                   </div>
                   <div className="grid grid-cols-1">
-                      <div className="p-5 rounded-2xl border border-[#E2FF00]/20 bg-[#E2FF00]/5 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
-                          <div className="text-sm font-black uppercase mb-1 italic">Regular Basis</div>
-                          <div className="text-[10px] leading-tight opacity-60 uppercase tracking-widest font-black">Long Spot + Short Perp (Fully Hedged)</div>
-                      </div>
+                      {fundingRate < 0 ? (
+                          <div className="space-y-3">
+                              <div className="p-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.1)]">
+                                  <div className="text-sm font-black uppercase mb-1 italic flex items-center gap-2">
+                                      <ShieldCheck className="w-4 h-4" /> Negative Funding Protection
+                                  </div>
+                                  <div className="text-[10px] leading-tight opacity-80 uppercase tracking-widest font-bold">
+                                      Basis trade is disabled. Choose a capital preservation strategy:
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setStasisPreference("STAKE")}
+                                    className={clsx(
+                                        "p-4 rounded-xl border text-left transition-all relative overflow-hidden",
+                                        stasisPreference === "STAKE"
+                                            ? "bg-purple-500/20 border-purple-500 text-white"
+                                            : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
+                                    )}
+                                  >
+                                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1">Yield Hunter</div>
+                                      <div className="text-sm font-black italic">Liquid Stake</div>
+                                      <div className="text-[10px] opacity-60 mt-0.5">~4% APY</div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStasisPreference("CASH")}
+                                    className={clsx(
+                                        "p-4 rounded-xl border text-left transition-all relative overflow-hidden",
+                                        stasisPreference === "CASH"
+                                            ? "bg-blue-500/20 border-blue-500 text-white"
+                                            : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
+                                    )}
+                                  >
+                                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1">Safe Harbor</div>
+                                      <div className="text-sm font-black italic">Hold Cash</div>
+                                      <div className="text-[10px] opacity-60 mt-0.5">0% Risk</div>
+                                  </button>
+                              </div>
+                          </div>
+                      ) : (
+                          <div className="p-5 rounded-2xl border border-[#E2FF00]/20 bg-[#E2FF00]/5 text-[#E2FF00] shadow-[0_0_20px_rgba(226,255,0,0.05)]">
+                              <div className="text-sm font-black uppercase mb-1 italic">Regular Basis</div>
+                              <div className="text-[10px] leading-tight opacity-60 uppercase tracking-widest font-black">Long Spot + Short Perp (Fully Hedged)</div>
+                          </div>
+                      )}
                   </div>
               </div>
 
@@ -309,12 +388,16 @@ export default function CreateCustomTradePage() {
                               )}
                           >
                               <div className={clsx(
-                                  "w-12 h-12 rounded-full flex items-center justify-center font-black text-xl",
+                                  "w-12 h-12 rounded-full flex items-center justify-center font-black text-xl overflow-hidden border border-white/10",
                                   formData.pair === pair.id
                                       ? "bg-blue-500/20 text-blue-400"
                                       : "bg-slate-800 text-slate-400"
                               )}>
-                                  {pair.icon}
+                                  {pair.icon.startsWith('http') ? (
+                                      <img src={pair.icon} alt={pair.label} className="w-full h-full object-cover" />
+                                  ) : (
+                                      pair.icon
+                                  )}
                               </div>
                               <div className="flex-1 text-left">
                                   <p className="font-bold text-white">{pair.label}</p>

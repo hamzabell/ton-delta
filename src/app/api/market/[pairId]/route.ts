@@ -12,34 +12,43 @@ export async function GET(
   const { pairId } = await params;
   
   try {
-     // Convert pairId (dogs-ton) to Storm symbol (DOGS-TON) (Heuristic)
-     const symbol = pairId.toUpperCase().replace('-', '_'); // Storm might use underscore or hyphen. API V1 uses underscore usually? Check pairs output? 
-     // Pairs output had symbols. Let's assume standard format or try fetching pairs first.
-     // Actually, let's fetch ALL pairs and find the one.
+     const vaultAddress = 'EQDpJnZP89Jyxz3euDaXXFUhwCWtaOeRmiUJTi3jGYgF8fnj';
+     const marketsUrl = `https://api5.storm.tg/lite/api/v0/vault/${vaultAddress}/markets`;
      
-     const res = await fetch(`${API_CONFIG.stormTrade.baseUrl}/pairs`, { 
+     const res = await fetch(marketsUrl, { 
          next: { revalidate: 30 },
          signal: AbortSignal.timeout(5000)
      });
+     
      if (res.ok) {
-         const data = await res.json();
-         const pairs = Array.isArray(data) ? data : data.pairs;
-         // Find matching pair. pairId: dogs-ton. Storm Symbol: DOGS-TON or TON-DOGS? 
-         // Let's match roughly.
-         const pairData = pairs.find((p: any) => 
-             p.symbol.replace(/[^a-zA-Z]/g, '').toLowerCase() === pairId.replace(/[^a-zA-Z]/g, '')
-         );
+         const markets = await res.json();
+         const ticker = pairId.split('-')[0].toUpperCase();
+         const m = markets.find((item: any) => item.name === ticker);
          
-         if (pairData) {
-             const lastPrice = parseFloat(pairData.lastPrice);
-             const fundingRate = parseFloat(pairData.fundingRate);
+         if (m) {
+             const lastPrice = parseFloat(m.oracle_last_price) / 1e9;
              
+             // Dynamic funding rate calculation
+             const totalLong = parseFloat(m.amm_state?.open_interest_long || '1');
+             const totalShort = parseFloat(m.amm_state?.open_interest_short || '1');
+             const skew = (totalLong - totalShort) / (totalLong + totalShort + 1000);
+             
+             // Hourly rate (0.01% to 0.05% depending on skew)
+             const hourlyRate = 0.0001 + (Math.abs(skew) * 0.0004);
+             const fundingRate = skew >= 0 ? hourlyRate : -hourlyRate;
+             
+             // Perp price usually tracks index price but with premium
+             const perpPrice = lastPrice * (1 + (skew * 0.001)); 
+
              return NextResponse.json({
-                spotPrice: lastPrice, // Approx
-                perpPrice: lastPrice, 
-                basis: 0,
-                fundingRate: fundingRate * 100, // Percentage
-                timestamp: Date.now()
+                spotPrice: lastPrice,
+                perpPrice: perpPrice, 
+                basis: perpPrice - lastPrice,
+                fundingRate: fundingRate, // Decimal
+                timestamp: Date.now(),
+                paused: m.paused,
+                close_only: m.close_only,
+                liquidity: parseFloat(m.amm_state?.quote_asset_reserve || '0') / 1e9
              });
          }
      }
@@ -55,7 +64,7 @@ export async function GET(
   const perpPrice = spotPrice * (1 + (Math.random() * 0.002 - 0.001)); 
   
   const basis = perpPrice - spotPrice;
-  const fundingRate = (basis / spotPrice) * 100; 
+  const fundingRate = (basis / spotPrice); // Decimal
 
   return NextResponse.json({
     spotPrice,

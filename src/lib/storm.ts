@@ -107,25 +107,39 @@ export const buildClosePositionPayload = async (params: { vaultAddress: string, 
     
     if (sizeToClose === BigInt(0)) {
         // Fetch full position
-        const position = await withRetry(c => sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset));
-        if (!position) throw new Error("No open position found to close");
-        if (!position.shortPosition) throw new Error("No short position found to close");
-        
-        sizeToClose = position.shortPosition.positionData.size;
+        try {
+            const position = await withRetry(c => sdk.getPositionAccountData(Address.parse(params.vaultAddress), baseAsset));
+            if (!position || !position.shortPosition) {
+                 throw new Error("No open position found to close");
+            }
+            sizeToClose = position.shortPosition.positionData.size;
+        } catch (e: any) {
+            if (e.message?.includes('Asset info') || e.message?.includes('not found')) {
+                console.warn(`[StormSDK] Unsupported asset or missing info for ${baseAsset}. Skipping closer builder.`);
+                // Return 'skip' state
+                return null; 
+            }
+            throw e;
+        }
     }
 
-    const txParams = await withRetry(c => sdk.closePosition({
-        baseAsset,
-        direction: Direction.short,
-        traderAddress: Address.parse(params.vaultAddress),
-        size: sizeToClose
-    }));
+    try {
+        const txParams = await withRetry(c => sdk.closePosition({
+            baseAsset,
+            direction: Direction.short,
+            traderAddress: Address.parse(params.vaultAddress),
+            size: sizeToClose
+        }));
 
-    return {
-        to: txParams.to.toString(),
-        value: txParams.value.toString(),
-        body: txParams.body.toBoc().toString('base64')
-    };
+        return {
+            to: txParams.to.toString(),
+            value: txParams.value.toString(),
+            body: txParams.body.toBoc().toString('base64')
+        };
+    } catch (e: any) {
+        if (e.message?.includes('Asset info')) return null;
+        throw e;
+    }
 };
 
 /**
@@ -166,7 +180,14 @@ export const getPosition$ = (symbol: string, userAddress: string): Observable<{ 
         const sdk = await getStormSDK();
         const baseAsset = symbol.split('-')[0].toUpperCase();
         
-        const posData = await withRetry(c => sdk.getPositionAccountData(Address.parse(userAddress), baseAsset));
+        let posData;
+        try {
+            posData = await withRetry(c => sdk.getPositionAccountData(Address.parse(userAddress), baseAsset));
+        } catch (e: any) {
+            // If asset is unsupported, return zero position
+            if (e.message?.includes('Asset info')) return { amount: 0, entryPrice: 0 };
+            throw e;
+        }
         
         if (!posData || !posData.shortPosition) {
             // No position

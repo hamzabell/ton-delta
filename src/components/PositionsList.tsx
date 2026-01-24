@@ -55,7 +55,15 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
   }, [positions.length, visibleCount]);
 
   // Derived Values
-  const visiblePositions = positions.slice(0, visibleCount);
+  const [filterStatus, setFilterStatus] = useState<'OPEN' | 'CLOSED'>('OPEN');
+
+  // Derived Values
+  const filteredPositions = positions.filter(p => {
+    if (filterStatus === 'OPEN') return p.status !== 'closed';
+    return p.status === 'closed';
+  });
+  
+  const visiblePositions = filteredPositions.slice(0, visibleCount);
   const selectedPair = pairs.find((p) => p.id === selectedPairId);
 
   // Helper to enrich position data
@@ -104,9 +112,26 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">
-          Active Strategy Positions
-        </h2>
+        <div className="flex gap-4">
+             <button 
+                onClick={() => setFilterStatus('OPEN')}
+                className={clsx(
+                    "text-[10px] font-bold uppercase tracking-[0.3em] transition-colors",
+                    filterStatus === 'OPEN' ? "text-white" : "text-white/20 hover:text-white/40"
+                )}
+             >
+                Active
+             </button>
+             <button 
+                onClick={() => setFilterStatus('CLOSED')}
+                className={clsx(
+                    "text-[10px] font-bold uppercase tracking-[0.3em] transition-colors",
+                    filterStatus === 'CLOSED' ? "text-white" : "text-white/20 hover:text-white/40"
+                )}
+             >
+                Closed
+             </button>
+        </div>
         
         {/* Filter Dropdown Trigger */}
         <button

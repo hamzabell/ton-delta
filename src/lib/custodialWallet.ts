@@ -4,22 +4,22 @@ import { Address, Cell } from '@ton/core';
 import { from, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
+import { getTonClient, withRetry } from './onChain';
 import { CURRENT_NETWORK } from './config';
 
-const tonClient = new TonClient({ endpoint: CURRENT_NETWORK.tonApi });
 export const getKeeperWallet$ = (): Observable<{ contract: OpenedContract<WalletContractV4>, key: KeyPair }> => {
   const mnemonic = process.env.KEEPER_MNEMONIC;
   if (!mnemonic) {
     throw new Error('KEEPER_MNEMONIC not found in environment variables');
   }
 
-  return from(mnemonicToPrivateKey(mnemonic.split(' '))).pipe(
-    map(key => {
-      const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
-      const contract = tonClient.open(wallet);
-      return { contract, key };
-    })
-  );
+  return from((async () => {
+    const key = await mnemonicToPrivateKey(mnemonic.split(' '));
+    const client = await getTonClient();
+    const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
+    const contract = client.open(wallet);
+    return { contract, key };
+  })());
 };
 
 /**
@@ -28,11 +28,11 @@ export const getKeeperWallet$ = (): Observable<{ contract: OpenedContract<Wallet
 export const sendTransactions$ = (transactions: { address: string, value: string, cell: string }[]): Observable<{ seqno: number, address: string }> => {
   return getKeeperWallet$().pipe(
     switchMap(({ contract, key }) => {
-      return (from(contract.getSeqno()) as Observable<number>).pipe(
+      return (from(withRetry(() => contract.getSeqno())) as Observable<number>).pipe(
         switchMap((seqno) => {
           console.log(`[Custodial] Sending ${transactions.length} transactions from ${contract.address.toString({ bounceable: false })}`);
           
-          const transferPromise = contract.sendTransfer({
+          const transferPromise = withRetry(() => contract.sendTransfer({
             seqno,
             secretKey: key.secretKey,
             sendMode: SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS,
@@ -41,7 +41,7 @@ export const sendTransactions$ = (transactions: { address: string, value: string
               value: BigInt(tx.value),
               body: Cell.fromBase64(tx.cell),
             }))
-          });
+          }));
 
           return from(transferPromise).pipe(
             map(() => ({ seqno, address: contract.address.toString({ bounceable: false }) }))

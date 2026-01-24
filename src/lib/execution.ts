@@ -5,7 +5,7 @@ import { sendTransactions$ } from './custodialWallet';
 import { firstValueFrom } from 'rxjs';
 import { Logger } from '../services/logger';
 import { buildClosePositionPayload, buildOpenPositionPayload } from './storm';
-import { stonfi } from './stonfi';
+import { swapcoffee } from './swapcoffee';
 import { Buffer } from 'buffer';
 import { wrapWithKeeperRequest } from './w5-utils';
 import { Address, Cell, toNano, fromNano } from '@ton/core';
@@ -56,12 +56,11 @@ export const ExecutionService = {
             const ticker = position.pairId.split('-')[0].toUpperCase();
 
             // 1. Swap 50% TON -> Spot
-            const buySpotTx = await stonfi.buildSwapTx({
+            const buySpotTx = await swapcoffee.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: 'TON', 
                  toToken: ticker, 
-                 amount: toNano(spotAlloc.toFixed(2)).toString(), 
-                 minOutput: '1' 
+                 amount: spotAlloc.toFixed(2), 
             });
 
             // 2. Open Short with remaining 50%
@@ -110,7 +109,7 @@ export const ExecutionService = {
     /**
      * Executes a Panic Unwind for a given Position.
      */
-    executePanicUnwind: async (positionId: string, reason: string) => {
+    executePanicUnwind: async (positionId: string, reason: string, destinationAddress?: string) => {
         Logger.info('ExecutionService', `Initiating Panic Unwind. Reason: ${reason}`, positionId);
 
         try {
@@ -158,87 +157,58 @@ export const ExecutionService = {
                 
                 const ticker = position.pairId.split('-')[0].toUpperCase();
                 
-                // --- SLIPPAGE PROTECTION & TWAP LOGIC ---
-                // 1. Estimate Impact
-                const { expectedOutput, priceImpact } = await stonfi.getSimulatedSwap(
-                    ticker,
-                    'TON',
-                    position.spotAmount.toString() // We assume spotAmount is in nano or correct units? 
-                    // Wait, position.spotAmount is usually number (e.g. 100 DOGS). 
-                    // Ston.fi API expects units (Nano). 
-                    // Let's assume for this MVP we handle the conversion or correct it.
-                    // Actually, if spotAmount is number, we need to convert to Nano/Units.
-                    // For safety, we'll assume we pass '1' via toNano below, so we should convert here too.
-                    // But to minimize diff/error risk, let's keep it simple: 
-                    // Pass current logic's input but verified.
-                );
-
-                // Check for High Slippage (TWAP Trigger)
-                if (priceImpact > 0.05) { // > 5%
-                     Logger.warn('ExecutionService', `High Slippage Detected (${(priceImpact*100).toFixed(2)}%). Initiating TWAP Unwind.`, positionId);
-                     
-                     // CHUNKED UNWIND: Sell 10% Only
-                     // We recursively call a "Partial Unwind" or just execute 10% here and requeue.
-                     // For Atomic simplicity: We execute 10% NOW, and Re-Throw/Re-Queue the job?
-                     // Better: Execute 10% and return special status. The Worker checks status and re-queues.
-                     // Or: Simply update the 'spotAmount' to 10% for this TX.
-                     
-                     // Reduce amount to 10%
-                     const chunkAmount = position.spotAmount * 0.1;
-                     
-                     // Open Short Close also 10%
-                     const shortChunk = (position.perpAmount || 0) * 0.1;
-
-                     Logger.info('ExecutionService', `TWAP Chunk: Selling ${chunkAmount} Spot + Closing ${shortChunk} Short`, positionId);
-                     
-                     // Generate Payloads for Chunk
-                     const closeShortTx = await buildClosePositionPayload({
-                         vaultAddress: vaultOrWalletAddr,
-                         positionId: position.id,
-                         amount: shortChunk.toFixed(2),
-                         symbol: ticker
-                     });
-                     
-                     const sellSpotTx = await stonfi.buildSwapTx({
-                         userWalletAddress: vaultOrWalletAddr,
-                         fromToken: ticker, 
-                         toToken: 'TON',
-                         amount: toNano(chunkAmount.toString()).toString(), // Assuming this helper exists or we use import
-                         minOutput: '1' // Force mode for chunks (market order style as we accept the 10% hit)
-                     });
-
-                      liquidationMessages.push(
-                        { to: safeParseAddress(closeShortTx.to, 'closeShortTx.to'), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
-                        { to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
-                    );
-
-                    // We do NOT close the position in DB yet. We leave it 'active' or 'unwinding'.
-                    // For this MVP, we proceed to TX sending but skip the "close" update.
-
-                } else {
-                    // STANDARD ATOMIC UNWIND (100%)
+                // 1. Close Short (Storm)
+                try {
+                    Logger.info('ExecutionService', `Building Short closure for ${ticker}...`, positionId);
                     const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
                          symbol: ticker
                     });
+                    
+                    if (closeShortTx) {
+                        liquidationMessages.push({ 
+                            to: safeParseAddress(closeShortTx.to, 'closeShortTx.to'), 
+                            value: BigInt(closeShortTx.value || 0), 
+                            body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined 
+                        });
+                        Logger.info('ExecutionService', `Short closure payload added for ${ticker}`, positionId);
+                    }
+                } catch (e) {
+                    Logger.warn('ExecutionService', `Could not close short for ${ticker} (likely already closed or unsupported). Continuing...`, positionId);
+                }
 
-                    // Slippage Protected Output
-                    // minOutput = 99% of Expected
-                    const minOut = (BigInt(expectedOutput) * BigInt(99)) / BigInt(100);
+                // 2. Sell Spot (Swap Coffee)
+                try {
+                    Logger.info('ExecutionService', `Getting Swap Coffee quote for ${ticker} -> TON...`, positionId);
+                    const quote = await swapcoffee.getQuote(
+                        ticker,
+                        'TON',
+                        toNano(position.spotAmount.toString()).toString()
+                    );
+                    
+                    const expectedOutput = quote.to_amount || '0';
+                    const priceImpact = Number(quote.price_impact || 0);
 
-                    const sellSpotTx = await stonfi.buildSwapTx({
+                    // Slippage Protected Output (95% for panic)
+                    const minOut = (BigInt(expectedOutput) * BigInt(95)) / BigInt(100);
+
+                    const sellSpotTx = await swapcoffee.buildSwapTx({
                          userWalletAddress: vaultOrWalletAddr,
                          fromToken: ticker, 
                          toToken: 'TON',
-                         amount: position.spotAmount.toString(), // Note: verify unit consistency
+                         amount: position.spotAmount.toString(),
                          minOutput: minOut.toString()
                     });
 
-                    liquidationMessages.push(
-                        { to: safeParseAddress(closeShortTx.to, 'closeShortTx.to'), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
-                        { to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
-                    );
+                    liquidationMessages.push({ 
+                        to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), 
+                        value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), 
+                        body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body 
+                    });
+                    Logger.info('ExecutionService', `Spot liquidation payload added for ${ticker}`, positionId);
+                } catch (e) {
+                     Logger.warn('ExecutionService', `Could not liquidate spot ${ticker} via Swap Coffee (unsupported or no liquidity). Continuing...`, positionId);
                 }
 
 
@@ -253,11 +223,11 @@ export const ExecutionService = {
                 Logger.info('ExecutionService', 'Panic Unwind: Selling Liquid Staking position...', positionId);
                 
                 // We assume the asset is tsTON.
-                const sellTsTonTx = await stonfi.buildSwapTx({
+                const sellTsTonTx = await swapcoffee.buildSwapTx({
                      userWalletAddress: vaultOrWalletAddr,
                      fromToken: 'tsTON', 
                      toToken: 'TON',
-                     amount: toNano(position.totalEquity.toString()).toString(), 
+                     amount: position.totalEquity.toString(), 
                      minOutput: '1'
                 });
 
@@ -265,9 +235,15 @@ export const ExecutionService = {
                     { to: safeParseAddress(sellTsTonTx.to, 'sellTsTonTx.to'), value: typeof sellTsTonTx.value === 'bigint' ? sellTsTonTx.value : BigInt(sellTsTonTx.value), body: typeof sellTsTonTx.body === 'string' ? Cell.fromBase64(sellTsTonTx.body) : sellTsTonTx.body }
                 );
             }
-
-
             
+            // --- GRACEFUL LIQUIDATION HANDLING ---
+            // If liquidationMessages is empty but status is 'active', it means the underlying
+            // dex/perp calls failed (e.g. unsupported asset HDCN).
+            // We still proceed to the Sweep/Revoke step to release the user's funds and delegation.
+            if (liquidationMessages.length === 0 && position.status === 'active') {
+                Logger.warn('ExecutionService', 'No on-chain liquidation possible (orphaned or unsupported position). Proceeding with sweep and revocation to release user funds.', positionId);
+            }
+
             Logger.info('ExecutionService', 'Wrapping for W5 delegation, revocation, and sweep...', positionId);
             
             const keeperAddress = safeParseAddress(process.env.NEXT_PUBLIC_KEEPER_ADDRESS, 'NEXT_PUBLIC_KEEPER_ADDRESS');
@@ -276,7 +252,7 @@ export const ExecutionService = {
             // Keeper sends TX to Unwind AND Remove Itself (Atomic Safety)
             // 2. Build Exit Transfers (Fee + Sweep to User)
              const { messages: exitMessages, summary } = buildAtomicExitTx({
-                 userAddress: userWalletAddr,
+                 userAddress: destinationAddress || userWalletAddr,
                  totalAmountTon: currentEquity / (position.currentPrice || 1), 
                  entryValueTon: entryValue / (position.entryPrice || 1)
             });
@@ -288,8 +264,8 @@ export const ExecutionService = {
                 ...liquidationMessages,
                 // Exit Transfers (Fee & Sweep)
                 ...exitMessages.map(msg => {
-                    const userAddr = Address.parse(userWalletAddr);
-                    const isUserCalc = msg.to.toString() === userAddr.toString();
+                    const destAddr = Address.parse(destinationAddress || userWalletAddr);
+                    const isUserCalc = msg.to.toString() === destAddr.toString();
                     return {
                         to: msg.to,
                         value: isUserCalc ? BigInt(0) : msg.value, // User gets remaining balance
@@ -337,7 +313,10 @@ export const ExecutionService = {
             await prisma.$transaction([
                 prisma.position.update({
                     where: { id: positionId },
-                    data: { status: 'closed' } // TODO: Handle Partial/Unwinding State for full TWAP
+                    data: { 
+                        status: 'closed',
+                        exitTxHash: txHash
+                    }
                 }),
             ]);
 
@@ -380,7 +359,7 @@ export const ExecutionService = {
              // 2. Build Spot Sell Payload (Liquidation to Cash)
              // We assume pairId format "ticker-ton" implies ticker is the spot asset.
              // e.g. "dogs-ton" -> Spot is DOGS. We swap DOGS -> TON.
-             const sellSpotTx = await stonfi.buildSwapTx({
+             const sellSpotTx = await swapcoffee.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: ticker, 
                  toToken: 'TON',
@@ -390,7 +369,7 @@ export const ExecutionService = {
 
              // 3. Wrap & Broadcast
              const rawMessages = [
-                 { to: Address.parse(closeShortTx.to), value: BigInt(closeShortTx.value), body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined },
+                 { to: Address.parse(closeShortTx?.to || 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'), value: BigInt(closeShortTx?.value || 0), body: closeShortTx?.body ? Cell.fromBase64(closeShortTx.body) : undefined },
                  { to: Address.parse(sellSpotTx.to), value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body }
              ];
 
@@ -445,7 +424,7 @@ export const ExecutionService = {
                  throw new Error(`Insufficient Balance for Staking: ${fromNano(balanceNano)} TON`);
             }
 
-            const stakeTx = await stonfi.buildSwapTx({
+            const stakeTx = await swapcoffee.buildSwapTx({
                  userWalletAddress: vaultAddrStr,
                  fromToken: 'TON', 
                  toToken: 'tsTON',
@@ -494,7 +473,7 @@ export const ExecutionService = {
              // 1. If Liquid Staking (Yield Hunter), sell tsTON -> TON first
              if (position.status === 'stasis_active') {
                  Logger.info('ExecutionService', 'Exit Stasis: Unstaking tsTON -> TON...', positionId);
-                 const unstakeTx = await stonfi.buildSwapTx({
+                 const unstakeTx = await swapcoffee.buildSwapTx({
                      userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                      fromToken: 'tsTON', 
                      toToken: 'TON',
@@ -530,7 +509,7 @@ export const ExecutionService = {
              const ticker = position.pairId.split('-')[0].toUpperCase();
              const amountToSwap = position.spotValue || 100; 
              
-             const buySpotTx = await stonfi.buildSwapTx({
+             const buySpotTx = await swapcoffee.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: 'TON',
                  toToken: ticker, 
@@ -613,9 +592,10 @@ export const ExecutionService = {
 
             const result = await firstValueFrom(sendTransactions$(txs));
             
-            // Log for Audit
-            // Log for Audit
+             // Log for Audit
             Logger.info('Execution', 'REBALANCE_EXECUTED', positionId, { amount, isDeposit, txHash: `seqno_${result.seqno}` });
+        
+            await prisma.position.update({ where: { id: positionId }, data: { lastRebalanced: new Date() } });
 
         } catch (error: unknown) {
              const err = error instanceof Error ? error : new Error(String(error));
@@ -662,6 +642,11 @@ export const ExecutionService = {
                 });
             }
 
+            if (!txPayload) {
+                Logger.warn('ExecutionService', 'No rebalance payload generated (unsupported asset or no position).', positionId);
+                return;
+            }
+
             // Wrap & Broadcast
              const rawMessages = [
                  { to: Address.parse(txPayload.to), value: BigInt(txPayload.value), body: txPayload.body ? Cell.fromBase64(txPayload.body) : undefined }
@@ -682,7 +667,10 @@ export const ExecutionService = {
              const change = delta > 0 ? absDelta : -absDelta;
              await prisma.position.update({ 
                  where: { id: positionId }, 
-                 data: { perpAmount: { increment: change } } 
+                 data: { 
+                    perpAmount: { increment: change },
+                    lastRebalanced: new Date() 
+                } 
              });
 
              Logger.info('ExecutionService', 'DELTA_REBALANCE_EXECUTED', positionId, { seqno: result.seqno });

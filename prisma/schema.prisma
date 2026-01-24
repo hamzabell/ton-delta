@@ -96,6 +96,8 @@ model Position {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  lastRebalanced  DateTime? // Timestamp of last rebalance action
+  exitTxHash      String?   // Exit transaction hash for user reference
   
   fundingEvents   FundingEvent[]
 }

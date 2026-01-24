@@ -5,15 +5,11 @@ import { Zap, Shield, Flame, Info, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePairsInfinite } from '@/hooks/usePairs';
 import PairDetailsBottomSheet from "@/components/PairDetailsBottomSheet";
-import DelegationBottomSheet from "@/components/DelegationBottomSheet";
 
 export default function OpportunitiesPage() {
   const [sortBy, setSortBy] = useState<'tvl' | 'yield'>('tvl');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
-  const [showDelegationSheet, setShowDelegationSheet] = useState(false);
-  const [delegationPairId, setDelegationPairId] = useState<string | null>(null);
-  const [delegationAmount, setDelegationAmount] = useState<string>("");
 
   // Pull to Refresh Logic
   const [pullStartPoint, setPullStartPoint] = useState(0);
@@ -80,25 +76,6 @@ export default function OpportunitiesPage() {
     if (loaderRef.current) observer.observe(loaderRef.current);
     return () => observer.disconnect();
   }, [hasMore, loadMore, isLoadingMore]);
-
-  const handleEnterPosition = (amount: string) => {
-    setShowDelegationSheet(true);
-    setDelegationPairId(selectedPairId);
-    setDelegationAmount(amount);
-    setSelectedPairId(null);
-  }
-
-  const handleDelegationClose = () => {
-    setShowDelegationSheet(false);
-    setDelegationPairId(null);
-    setDelegationAmount("");
-  }
-
-  const handleDelegationBack = () => {
-    setShowDelegationSheet(false);
-    setSelectedPairId(delegationPairId);
-    setDelegationAmount("");
-  }
 
   return (
     <div 
@@ -276,6 +253,11 @@ export default function OpportunitiesPage() {
                       {pair.risk === 'Conservative' && (
                            <Shield className="w-3 h-3 text-emerald-500 fill-emerald-500/20" />
                       )}
+                      {pair.fundingRate < 0 && (
+                          <span className="text-[8px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded ml-1 border border-purple-500/20">
+                              Liquid Stake Only
+                          </span>
+                      )}
                   </div>
                   
                   <div className="flex items-center gap-3 mt-1.5">
@@ -342,16 +324,6 @@ export default function OpportunitiesPage() {
         pairId={selectedPairId}
         isOpen={!!selectedPairId}
         onClose={() => setSelectedPairId(null)}
-        onEnterPosition={handleEnterPosition}
-      />
-
-      {/* Delegation Bottom Sheet */}
-      <DelegationBottomSheet
-        pairId={delegationPairId}
-        isOpen={showDelegationSheet}
-        onClose={handleDelegationClose}
-        onBack={handleDelegationBack}
-        amount={delegationAmount}
       />
     </div>
   );

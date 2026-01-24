@@ -6,26 +6,19 @@ import { CURRENT_NETWORK } from './config'; // Adjust path if needed
 let client: TonClient | null = null;
 let clientEndpoint: string | null = null;
 
-const SLEEP_MS = 1000;
+const SLEEP_MS = 5000;
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export const getTonClient = async (forceNew = false) => {
     if (client && !forceNew) return client;
     
-    // Attempt with configuration endpoint first
-    let endpoint = CURRENT_NETWORK.tonApi;
+    // Attempt with TonCenter first (high stability)
+    let endpoint = 'https://toncenter.com/api/v2/jsonRPC';
     
-    if (!endpoint) {
-        try {
-            endpoint = await getHttpEndpoint();
-        } catch (e) {
-            console.error('[onChain] Failed to get TON HTTP endpoint:', e);
-            // Fallback to public backup if ton-access fails
-            endpoint = 'https://toncenter.com/api/v2/jsonRPC';
-        }
-    }
-
+    // Fallback to config or ton-access if explicitly desired? 
+    // For now, let's force a stable one for the emergency refund.
+    
     clientEndpoint = endpoint;
     client = new TonClient({ endpoint });
     return client;
@@ -34,7 +27,7 @@ export const getTonClient = async (forceNew = false) => {
 /**
  * Executes a TON Client operation with automatic retries on 429
  */
-export const withRetry = async <T>(fn: (c: TonClient) => Promise<T>, maxRetries = 3): Promise<T> => {
+export const withRetry = async <T>(fn: (c: TonClient) => Promise<T>, maxRetries = 10): Promise<T> => {
     let lastError: any;
     for (let i = 0; i < maxRetries; i++) {
         try {
