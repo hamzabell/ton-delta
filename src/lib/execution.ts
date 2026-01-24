@@ -241,16 +241,27 @@ export const ExecutionService = {
             }
 
 
-
             
             Logger.info('ExecutionService', 'Wrapping for W5 delegation, revocation, and sweep...', positionId);
-            const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "");
-            const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
+            
+            // Validate addresses before parsing
+            // Note: userId IS the wallet address in this system (set during user creation)
+            const userWalletAddr = position.user.walletAddress || position.userId;
+            if (!userWalletAddr) {
+                throw new Error(`User wallet address is missing for position ${positionId}`);
+            }
+            
+            if (!process.env.NEXT_PUBLIC_KEEPER_ADDRESS) {
+                throw new Error('NEXT_PUBLIC_KEEPER_ADDRESS is not configured');
+            }
+            
+            const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS);
+            const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(userWalletAddr);
             
             // Keeper sends TX to Unwind AND Remove Itself (Atomic Safety)
             // 2. Build Exit Transfers (Fee + Sweep to User)
              const { messages: exitMessages, summary } = buildAtomicExitTx({
-                 userAddress: position.user.walletAddress || '',
+                 userAddress: userWalletAddr,
                  totalAmountTon: currentEquity / (position.currentPrice || 1), 
                  entryValueTon: entryValue / (position.entryPrice || 1)
             });
@@ -262,7 +273,8 @@ export const ExecutionService = {
                 ...liquidationMessages,
                 // Exit Transfers (Fee & Sweep)
                 ...exitMessages.map(msg => {
-                    const isUserCalc = msg.to.toString() === Address.parse(position.user.walletAddress!).toString();
+                    const userAddr = Address.parse(userWalletAddr);
+                    const isUserCalc = msg.to.toString() === userAddr.toString();
                     return {
                         to: msg.to,
                         value: isUserCalc ? BigInt(0) : msg.value, // User gets remaining balance
