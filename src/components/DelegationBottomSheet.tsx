@@ -115,7 +115,7 @@ export default function DelegationBottomSheet({
         // A simple transfer to the vault is enough to deploy it if stateInit is attached.
         
         // Let's send a comment "Deploy Vault" payload for now to keep it simple.
-        const { CommentMessage } = await import("@/lib/utils"); // Assuming we have utils or just manual cell
+        // const { CommentMessage } = await import("@/lib/utils"); // Assuming we have utils or just manual cell
         // actually just empty body or comment is fine.
         
         // For verify sake: verify w5-utils signature.
