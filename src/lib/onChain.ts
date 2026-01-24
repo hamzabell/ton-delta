@@ -14,7 +14,7 @@ export const getTonClient = async (forceNew = false) => {
     if (client && !forceNew) return client;
     
     // Attempt with TonCenter first (high stability)
-    let endpoint = 'https://toncenter.com/api/v2/jsonRPC';
+    const endpoint = 'https://toncenter.com/api/v2/jsonRPC';
     
     // Fallback to config or ton-access if explicitly desired? 
     // For now, let's force a stable one for the emergency refund.

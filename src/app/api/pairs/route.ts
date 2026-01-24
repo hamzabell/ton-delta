@@ -88,7 +88,7 @@ export async function GET(request: Request) {
         if (!stormRes.ok) throw new Error(`Storm API Failed: ${stormRes.status}`);
         
         // Parse Storm Data (Handle both Testnet Array and Mainnet Vault format)
-        let stormData = await stormRes.json();
+        const stormData = await stormRes.json();
         let rawMarkets: any[] = [];
         
         if (IS_TESTNET) {

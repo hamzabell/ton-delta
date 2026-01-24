@@ -1,0 +1,85 @@
+
+> ton-delta@0.1.0 lint
+> eslint
+
+
+/Users/apple/Documents/ton-delta/src/app/api/pairs/route.ts
+  91:13  error  'stormData' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/apple/Documents/ton-delta/src/app/dashboard/create/page.tsx
+  180:35  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  383:39  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/apple/Documents/ton-delta/src/app/dashboard/page.tsx
+  237:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/apple/Documents/ton-delta/src/components/PositionDetailsBottomSheet.tsx
+  36:45  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/apple/Documents/ton-delta/src/components/PositionDetailsBottomSheet.tsx:36:45
+  34 |   const daysLeft = Math.max(
+  35 |     0,
+> 36 |     Math.floor((displayData.sessionExpiry - Date.now()) / (24 * 60 * 60 * 1000))
+     |                                             ^^^^^^^^^^ Cannot call impure function
+  37 |   );
+  38 |
+  39 |   const isMaxLossTriggered = position.totalEquity < position.principalFloor;  react-hooks/purity
+  56:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @next/next/no-img-element
+
+/Users/apple/Documents/ton-delta/src/components/PositionFilterBottomSheet.tsx
+  111:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/apple/Documents/ton-delta/src/components/PositionsList.tsx
+  184:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/apple/Documents/ton-delta/src/lib/execution.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/onChain.ts
+  17:9  error  'endpoint' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/browser.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/client.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/commonInputTypes.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/enums.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/internal/class.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/internal/prismaNamespaceBrowser.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/prisma-client/models.ts
+  3:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/lib/redis.ts
+  13:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  45:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/Users/apple/Documents/ton-delta/src/lib/storm.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/services/logger.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/tests/core-features.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/ban-ts-comment')
+
+/Users/apple/Documents/ton-delta/src/types/protocol.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/Users/apple/Documents/ton-delta/src/workers/e2e_lifecycle.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+✖ 24 problems (3 errors, 21 warnings)
+  2 errors and 15 warnings potentially fixable with the `--fix` option.
+

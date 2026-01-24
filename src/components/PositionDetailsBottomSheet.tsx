@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { X, Clock, AlertTriangle, ExternalLink, RefreshCw, Shield } from "lucide-react";
 import clsx from "clsx";
 import { Position } from "@/types/protocol";
@@ -31,9 +32,10 @@ export default function PositionDetailsBottomSheet({
 }: PositionDetailsBottomSheetProps) {
   if (!isOpen || !displayData || !position) return null;
 
+  const [now] = useState(() => Date.now());
   const daysLeft = Math.max(
     0,
-    Math.floor((displayData.sessionExpiry - Date.now()) / (24 * 60 * 60 * 1000))
+    Math.floor((displayData.sessionExpiry - now) / (24 * 60 * 60 * 1000))
   );
 
   const isMaxLossTriggered = position.totalEquity < position.principalFloor;
@@ -53,6 +55,7 @@ export default function PositionDetailsBottomSheet({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-white/30 border border-white/10 text-lg italic overflow-hidden">
                 {displayData.icon.startsWith('http') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={displayData.icon} alt={displayData.pairName} className="w-8 h-8 rounded-full" />
                 ) : (
                   displayData.icon
