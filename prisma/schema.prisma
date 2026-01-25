@@ -9,6 +9,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -98,6 +99,9 @@ model Position {
   updatedAt       DateTime @updatedAt
   lastRebalanced  DateTime? // Timestamp of last rebalance action
   exitTxHash      String?   // Exit transaction hash for user reference
+  entryTxHash     String?   // Master transaction hash from the Keeper for initial entry
+  spotTxHash      String?   // Individual hash for spot purchase
+  stormTxHash     String?   // Individual hash for storm trade
   
   fundingEvents   FundingEvent[]
 }
