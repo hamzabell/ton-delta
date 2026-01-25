@@ -57,15 +57,15 @@ export async function GET() {
       }
     );
 
-    // Schedule Strategy Job - Handles stasis transitions
+    // Schedule Keeper Monitor - Detects refund trigger payments
     await watchmanQueue.add(
-      'strategy-job',
+      'keeper-monitor',
       {},
       {
         repeat: {
-          pattern: '*/180 * * * * *', // Every 3 minutes
+          pattern: '*/30 * * * * *', // Every 30 seconds
         },
-        jobId: 'strategy-job-recurring',
+        jobId: 'keeper-monitor-recurring',
       }
     );
 
@@ -78,6 +78,7 @@ export async function GET() {
         { name: 'drift-monitor', interval: '120s' },
         { name: 'safety-check', interval: '60s' },
         { name: 'strategy-job', interval: '180s' },
+        { name: 'keeper-monitor', interval: '30s' },
       ],
     });
   } catch (error) {

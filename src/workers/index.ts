@@ -6,6 +6,7 @@ import { safetyCheckJob } from './jobs/safety-check';
 import { strategyJob } from './jobs/strategy';
 import { valuationJob } from './jobs/valuation';
 import { processEntryJob } from './jobs/entry';
+import { keeperMonitorJob } from './jobs/keeper-monitor';
 
 import { Logger } from '../services/logger';
 
@@ -27,6 +28,8 @@ const watchmanWorker = new Worker('watchman', async (job) => {
       return await valuationJob(job);
     case 'entry-job':
       return await processEntryJob(job);
+    case 'keeper-monitor':
+      return await keeperMonitorJob(job);
     default:
       console.warn(`[Worker] Unknown job: ${job.name}`);
   }

@@ -77,9 +77,10 @@ export async function wrapWithKeeperRequest(
     if (keeperAddrStr) {
         try {
             const keeperAddress = Address.parse(keeperAddrStr);
-            console.log(`[W5-Utils] Appending Gas Refund (0.05 TON) to Keeper: ${keeperAddress.toString()}`);
+            console.log(`[W5-Utils] Prepending Gas Refund (0.05 TON) to Keeper: ${keeperAddress.toString()}`);
             
-            actions.push({
+            // Unshift (prepend) so the refund happens BEFORE any sweep/exit actions
+            actions.unshift({
                 type: 'sendMsg',
                 mode: SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS, 
                 outMsg: internal({
@@ -119,6 +120,30 @@ export async function buildKeeperRequest(
         timeout: timeout,
         actions: actions
     });
+}
+
+/**
+ * Wraps standard messages into a V5R1 Owner Request (Internal Message).
+ * The Owner (User) sends this to the Vault. The Vault executes the actions.
+ * Opcode: 0x706c7573 ('plus')
+ */
+export async function wrapWithOwnerRequest(
+    messages: { to: Address, value: bigint, body?: Cell, mode?: number }[]
+): Promise<Cell> {
+    const actions: OutActionWalletV5[] = messages.map(msg => ({
+        type: 'sendMsg',
+        mode: msg.mode !== undefined ? msg.mode : (SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS),
+        outMsg: internal({
+            to: msg.to,
+            value: msg.value,
+            body: msg.body || new Cell()
+        })
+    }));
+
+    return beginCell()
+        .storeUint(0x706c7573, 32)
+        .store(storeOutListExtendedV5R1(actions))
+        .endCell();
 }
 
 

@@ -5,11 +5,12 @@ import { sendTransactions$ } from './custodialWallet';
 import { firstValueFrom } from 'rxjs';
 import { Logger } from '../services/logger';
 import { buildClosePositionPayload, buildOpenPositionPayload } from './storm';
-import { swapcoffee } from './swapcoffee';
+import { stonfi } from './stonfi';
 import { Buffer } from 'buffer';
 import { wrapWithKeeperRequest } from './w5-utils';
 import { Address, Cell, toNano, fromNano, beginCell } from '@ton/core';
 import { getTonBalance } from './onChain';
+import { swapcoffee } from './swapcoffee';
 
 /**
  * Service to handle actual on-chain execution of critical strategy actions.
@@ -18,18 +19,18 @@ import { getTonBalance } from './onChain';
 export const ExecutionService = {
 
     /**
-     * Checks if the Vault has enough solvent funds to perform the current action AND still afford a future Panic Unwind.
-     * If insolvent, it AUTOMATICALLY triggers a Panic Unwind and throws a stoppage error.
+     * Checks if the Vault has enough solvent funds.
+     * If insolvent, it AUTOMATICALLY triggers 'Enter Stasis' to secure funds.
      */
-    ensureSolvencyOrPanic: async (positionId: string, vaultAddress: string, currentActionCost: number, actionName: string) => {
+    ensureSolvencyOrStasis: async (positionId: string, vaultAddress: string, currentActionCost: number, actionName: string) => {
         try {
             const balanceNano = await getTonBalance(vaultAddress);
             const balanceTON = Number(fromNano(balanceNano));
 
-            // Required: Panic Cost (0.15) + Current Action (Refund 0.05) + Small Buffer (0.05)
-            const PANIC_RESERVE = 0.15;
+            // Required: Stasis Cost (0.05) + Current Action + Small Buffer (0.05)
+            const STASIS_RESERVE = 0.05;
             const BUFFER = 0.05;
-            const requiredParam = PANIC_RESERVE + currentActionCost + BUFFER;
+            const requiredParam = STASIS_RESERVE + currentActionCost + BUFFER;
 
             Logger.info('ExecutionService', 'SOLVENCY_CHECK', positionId, { 
                 action: actionName,
@@ -38,19 +39,19 @@ export const ExecutionService = {
             });
 
             if (balanceTON < requiredParam) {
-                Logger.warn('ExecutionService', `SOLVENCY_FAILURE: Vault balance (${balanceTON}) < Required (${requiredParam}). Triggering Pre-emptive Panic Unwind.`, positionId);
+                Logger.warn('ExecutionService', `SOLVENCY_FAILURE: Vault balance (${balanceTON}) < Required (${requiredParam}). Triggering Stasis Mode.`, positionId);
                 
-                // Trigger Panic immediately
-                await ExecutionService.executePanicUnwind(positionId, `Solvency Check Failed during ${actionName}`);
+                // Trigger Stasis immediately instead of Panic
+                await ExecutionService.enterStasis(positionId);
                 
                 // Throw specific error to halt the original action
-                throw new Error(`SOLVENCY_EXIT_TRIGGERED: Vault had insufficient funds for ${actionName} + Future Exit.`);
+                throw new Error(`SOLVENCY_STASIS_TRIGGERED: Vault had insufficient funds for ${actionName}. Moved to Stasis.`);
             }
 
             return true;
         } catch (e) {
-            // If it's our own solvency error, rethrow it. 
-            // If getTonBalance fails, we probably shouldn't proceed anyway.
+            // If it's our own stasis trigger, rethrow it.
+            if ((e as Error).message.includes('SOLVENCY_STASIS_TRIGGERED')) throw e;
             throw e;
         }
     },
@@ -83,20 +84,17 @@ export const ExecutionService = {
             const balance = Number(fromNano(balanceNano));
             
             // Safety & Fee Calculation
-            // 1. Gas Buffer (Standard): 0.1 TON (kept for compute)
-            // 2. Keeper Entry Fee: 0.1 TON (sent to keeper immediately)
-            // 3. Exit Insurance Reserve: 0.15 TON (kept in vault for future panic unwind)
-            const ENTRY_FEE = 0.1;
-            const EXIT_INSURANCE = 0.15;
+            // 1. Gas Buffer (Standard): 0.1 TON (kept for compute/storage)
+            // Fees Removed: No Entry Fee, No Exit Insurance.
             const GAS_BUFFER = 0.1;
             
-            const totalReserved = ENTRY_FEE + EXIT_INSURANCE + GAS_BUFFER;
+            const totalReserved = GAS_BUFFER;
 
             if (balance < totalReserved) {
-                 throw new Error(`Insufficient Vault Balance for Fees: Has ${balance} TON, Need ${totalReserved} TON`);
+                 throw new Error(`Insufficient Vault Balance: Has ${balance} TON, Need ${totalReserved} TON`);
             }
             
-            // The "Investable" amount is what remains after reserving all fees/buffers
+            // The "Investable" amount is what remains after reserving buffer
             const investableAmount = balance - totalReserved;
 
             const spotAlloc = investableAmount * 0.5;
@@ -105,7 +103,7 @@ export const ExecutionService = {
             const ticker = position.pairId.split('-')[0].toUpperCase();
 
             // 1. Swap 50% TON -> Spot
-            const buySpotTx = await swapcoffee.buildSwapTx({
+            const buySpotTx = await stonfi.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: 'TON', 
                  toToken: ticker, 
@@ -123,19 +121,16 @@ export const ExecutionService = {
              // 3. Wrap & Broadcast
              const rawMessages = [
                  { to: Address.parse(buySpotTx.to), value: typeof buySpotTx.value === 'bigint' ? buySpotTx.value : BigInt(buySpotTx.value), body: typeof buySpotTx.body === 'string' ? Cell.fromBase64(buySpotTx.body) : buySpotTx.body },
-                 { to: Address.parse(openShortTx.to), value: BigInt(openShortTx.value), body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined }
+                 { to: Address.parse(openShortTx.to), value: BigInt(openShortTx.value), body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined },
+                 // FEE REFUND: Vault -> Keeper (0.05 TON)
+                 {
+                    to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
+                    value: toNano('0.05'),
+                    body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Entry').endCell()
+                 }
              ];
 
-             // --- KEEPER ENTRY FEE / TOP UP ---
-             // Send 0.1 TON to Keeper to fuel future actions (Auto-Refuel seed)
-             if (process.env.NEXT_PUBLIC_KEEPER_ADDRESS) {
-                 rawMessages.push({
-                     to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS),
-                     value: toNano("0.1"),
-                     body: undefined
-                 });
-                 Logger.info('ExecutionService', 'Added 0.1 TON Entry Fee/TopUp for Keeper', positionId);
-             }
+             // REMOVED: Keeper Entry Fee / Top Up. User pays entry gas.
 
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
              const wrappedCell = await wrapWithKeeperRequest(targetAddress, rawMessages);
@@ -144,20 +139,31 @@ export const ExecutionService = {
                 address: targetAddress.toString(),
                 value: '50000000', 
                 cell: wrappedCell.toBoc().toString('base64')
+             },
+             // FEE REFUND: Keeper -> User (0.03 TON)
+             {
+                address: position.user.walletAddress || position.userId,
+                value: '30000000', // 0.03 TON
+                cell: beginCell().storeUint(0, 32).storeStringTail("Pamelo: Entry Refund").endCell().toBoc().toString('base64')
              }];
 
              const result = await firstValueFrom(sendTransactions$(txs));
 
+             // Use the seqno as a temporary entryTxHash until it's confirmed
+             // Real hash would require parsing the message cell, but we'll use this for tracking.
+             const entryTxHash = `entry_seq_${result.seqno}_${Date.now()}`;
+
              await prisma.position.update({ 
                  where: { id: positionId }, 
                  data: { 
-                     status: 'active',
+                     status: 'pending_entry_verification',
+                     entryTxHash: entryTxHash,
                      spotAmount: spotAlloc, 
                      perpAmount: marginAlloc
                  } 
              });
              
-             Logger.info('ExecutionService', 'INITIAL_ENTRY_EXECUTED', positionId, { seqno: result.seqno });
+             Logger.info('ExecutionService', 'INITIAL_ENTRY_BROADCASTED', positionId, { entryTxHash, seqno: result.seqno });
 
         } catch (error: unknown) {
              const err = error instanceof Error ? error : new Error(String(error));
@@ -167,20 +173,15 @@ export const ExecutionService = {
     },
 
     /**
-     * Executes a Panic Unwind for a given Position.
-     * Handles different position modes:
-     * - Cash Stasis: Direct refund (no liquidation)
-     * - Basis/Active: Close short + sell spot -> TON, then refund
+     * Builds the Exit Payload for a given Position.
+     * This allows the USER to sign and execute the exit.
      */
-    executePanicUnwind: async (positionId: string, reason: string, destinationAddress?: string) => {
-        Logger.info('ExecutionService', `Initiating Panic Unwind. Reason: ${reason}`, positionId);
+    buildUserExitPayload: async (positionId: string, reason: string, destinationAddress?: string) => {
+        Logger.info('ExecutionService', `Building User Exit Payload. Reason: ${reason}`, positionId);
 
         try {
-            // Set status to processing_exit immediately
-            await prisma.position.update({
-                where: { id: positionId },
-                data: { status: 'processing_exit' }
-            });
+            // NOTE: We don't update status to 'processing_exit' here anymore because this is a read-only operation
+            // that generates a payload. The API handler will update the status.
 
             const position = await prisma.position.findUnique({
                 where: { id: positionId },
@@ -191,22 +192,14 @@ export const ExecutionService = {
                 throw new Error(`Position ${positionId} not found`);
             }
 
-            // CRITICAL: Validate addresses FIRST before any usage
             const userWalletAddr = position.user.walletAddress || position.userId;
             if (!userWalletAddr) {
                 throw new Error(`User wallet address is missing for position ${positionId}`);
             }
 
-            if (!process.env.NEXT_PUBLIC_KEEPER_ADDRESS) {
-                throw new Error('NEXT_PUBLIC_KEEPER_ADDRESS environment variable is not configured');
-            }
-
-            // Use validated wallet address for ALL operations
             const vaultOrWalletAddr = position.vaultAddress || userWalletAddr;
-
             const entryValue = position.spotAmount * position.entryPrice;
-            const currentEquity = position.totalEquity || entryValue * 0.9; 
-
+            
             // Helper function for safe address parsing
             const safeParseAddress = (addr: string | undefined, context: string) => {
                 if (!addr) throw new Error(`Address is missing for ${context}`);
@@ -218,25 +211,17 @@ export const ExecutionService = {
                 }
             };
 
-            // 1. Build Liquidation Payloads based on Position Mode
+            // 1. Build Liquidation Payloads
             const liquidationMessages: { to: Address, value: bigint, body?: Cell }[] = [];
-            let liquidationDescription = 'No liquidation needed';
-
-            // MODE 1: CASH STASIS - Direct refund, no liquidation
-            if (position.status === 'stasis') {
-                Logger.info('ExecutionService', `[CASH STASIS] Position is in Cash Stasis mode. Cash is already in contract. Proceeding directly to refund.`, positionId);
-                liquidationDescription = 'Cash Stasis - Direct Refund';
-            }
             
-            // MODE 3: BASIS/ACTIVE - Close short + sell spot to TON, then refund
-            else if (position.status === 'active') {
-                Logger.info('ExecutionService', `[BASIS MODE] Position is in Active Basis mode. Closing short and selling spot to TON...`, positionId);
-                
+            if (position.status === 'stasis') {
+                Logger.info('ExecutionService', `[CASH STASIS] Position in Stasis. Direct refund.`, positionId);
+            }
+            else if (position.status === 'active' || position.status === 'stasis_active') { // Handle stasis_active too just in case
                 const ticker = position.pairId.split('-')[0].toUpperCase();
                 
-                // Step 1: Close Short Position (Storm Trade)
+                // Step 1: Close Short
                 try {
-                    Logger.info('ExecutionService', `[BASIS MODE] Building short closure for ${ticker}...`, positionId);
                     const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
@@ -249,25 +234,19 @@ export const ExecutionService = {
                             value: BigInt(closeShortTx.value || 0), 
                             body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined 
                         });
-                        Logger.info('ExecutionService', `[BASIS MODE] Short closure payload added for ${ticker}`, positionId);
                     }
                 } catch (e) {
-                    Logger.warn('ExecutionService', `[BASIS MODE] Could not close short for ${ticker} (likely already closed or unsupported). Continuing...`, positionId);
+                    Logger.warn('ExecutionService', `[EXIT] Could not build close short (likely closed).`, positionId);
                 }
 
-                // Step 2: Sell Spot to TON (Swap Coffee)
+                // Step 2: Sell Spot
                 try {
-                    Logger.info('ExecutionService', `[BASIS MODE] Building spot sale for ${ticker} -> TON...`, positionId);
                     const quote = await swapcoffee.getQuote(
                         ticker,
                         'TON',
                         toNano(position.spotAmount.toString()).toString()
                     );
-                    
                     const expectedOutput = quote.to_amount || '0';
-                    const priceImpact = Number(quote.price_impact || 0);
-
-                    // Slippage Protected Output (95% for panic)
                     const minOut = (BigInt(expectedOutput) * BigInt(95)) / BigInt(100);
 
                     const sellSpotTx = await swapcoffee.buildSwapTx({
@@ -283,156 +262,68 @@ export const ExecutionService = {
                         value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), 
                         body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body 
                     });
-                    Logger.info('ExecutionService', `[BASIS MODE] Spot sale payload added for ${ticker} -> TON`, positionId);
                 } catch (e) {
-                     Logger.warn('ExecutionService', `[BASIS MODE] Could not sell spot ${ticker} via Swap Coffee (unsupported or no liquidity). Continuing...`, positionId);
-                }
-
-                liquidationDescription = liquidationMessages.length > 0 
-                    ? `Basis Mode - Closed short and sold spot for ${ticker}`
-                    : 'Basis Mode - Liquidation failed, proceeding to refund';
-                
-                // Warn if no liquidation was possible for active position
-                if (liquidationMessages.length === 0) {
-                    Logger.warn('ExecutionService', '[BASIS MODE] No on-chain liquidation possible (orphaned or unsupported position). Proceeding with sweep and revocation to release user funds.', positionId);
+                     Logger.warn('ExecutionService', `[EXIT] Could not build spot sell.`, positionId);
                 }
             }
 
-            Logger.info('ExecutionService', `Liquidation phase complete. Building refund transaction...`, positionId);
-            Logger.info('ExecutionService', `Liquidation summary: ${liquidationDescription}`, positionId);
+            // 2. Prepare Exit Messages
+            // We can't know the exact vault balance at execution time, but we can instruct the vault
+            // to sweep everything using mode 128.
             
             const keeperAddress = safeParseAddress(process.env.NEXT_PUBLIC_KEEPER_ADDRESS, 'NEXT_PUBLIC_KEEPER_ADDRESS');
             const targetAddress = position.vaultAddress ? safeParseAddress(position.vaultAddress, 'position.vaultAddress') : safeParseAddress(userWalletAddr, 'userWalletAddr');
-            
-            // CRITICAL: Check vault balance before attempting refund
-            const vaultBalance = await getTonBalance(targetAddress.toString());
-            const vaultBalanceTON = Number(fromNano(vaultBalance));
-            
-            Logger.info('ExecutionService', `Vault balance: ${vaultBalanceTON} TON`, positionId);
-            
-            if (vaultBalanceTON < 0.01) {
-                Logger.warn('ExecutionService', 'Vault balance too low for refund. Marking position as closed.', positionId);
-                await prisma.position.update({
-                    where: { id: positionId },
-                    data: { status: 'closed', exitTxHash: 'insufficient_balance' }
-                });
-                throw new Error(`Vault balance too low: ${vaultBalanceTON} TON`);
-            }
-            
-            // 2. Build Exit Transfers (Fee + Sweep to User)
-            
-            // Calculate total value attached to liquidation messages (TON)
-            const liquidationCostNano = liquidationMessages.reduce((sum: bigint, msg) => sum + msg.value, BigInt(0));
-            const liquidationCostTON = Number(fromNano(liquidationCostNano));
-            
-            Logger.info('ExecutionService', 'Liquidation Cost Calculation', positionId, { 
-                count: liquidationMessages.length, 
-                costTON: liquidationCostTON 
-            });
 
-            // Reserve for Storage/Gas (keeping extension alive)
-            const reserveAmount = 0.15; 
+            // Fee Logic (from fees.ts) - we call it assuming full sweep
+            // Since we use mode 128, the value/amount in the final message is ignored (it sends all)
+            // But we can structure the messages to pay the fee (if any) first.
             
-            // Available = Balance - LiquidationCost - Reserve
-            // Note: We ignore the incoming Keeper Boost (0.15) to be conservative/safe.
-            const safeWithdrawAmount = vaultBalanceTON - liquidationCostTON - reserveAmount;
-                 
-            if (safeWithdrawAmount <= 0) {
-                 Logger.warn('ExecutionService', `Zero or negative withdrawable amount (${safeWithdrawAmount}). Sweeping skipped.`, positionId);
-                 // If liquidation occurred, we still close. But refund is 0.
-            }
-
-            Logger.info('ExecutionService', `Calculating safe exit amount: ${safeWithdrawAmount} TON (Bal: ${vaultBalanceTON} - Liq: ${liquidationCostTON} - Res: ${reserveAmount})`, positionId);
-
-            const { messages: exitMessages, summary } = buildAtomicExitTx({
+            const { messages: exitMessages } = buildAtomicExitTx({
                  userAddress: destinationAddress || userWalletAddr,
-                 totalAmountTon: safeWithdrawAmount > 0 ? safeWithdrawAmount : 0, 
+                 totalAmountTon: 0, // Placeholder, loop will handle mode 128
                  entryValueTon: entryValue 
             });
 
-            Logger.info('ExecutionService', 'Generated Exit Fee Transfers', positionId, summary);
-
-            // 3. Combine Liquidation + Exit Messages
-            // CRITICAL: Exit messages already have correct values from buildAtomicExitTx
-            // The last message should use mode 128 (CARRY_ALL) to sweep remaining balance
+            // 3. Assemble
             const rawMessages = [
-                // 3.0. Refund Keeper for Panic Unwind Gas (0.05 TON)
-                {
-                    to: keeperAddress,
-                    value: toNano('0.05'),
-                    body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Panic Unwind').endCell()
-                },
+                // Refund Keeper for any outstanding (optional, maybe skip for user exit?)
+                // Actually, let's skip checking Keeper refund for user exit to maximize user return.
+                // The Keeper gets refunded per-action anyway.
+                
                 ...liquidationMessages,
-                // Exit Transfers (Fee & Sweep) - use messages as-is from buildAtomicExitTx
+                
                 ...exitMessages.map((msg, index) => {
-                    const isLastMessage = index === exitMessages.length - 1;
                     return {
                         to: msg.to,
-                        value: msg.value,
+                        value: msg.value, // value is relevant for fee, but for user sweep we want mode 128 on last
                         body: msg.body,
-                        mode: 128 // CARRY_ALL_REMAINING_BALANCE (Sweeps everything to user)
+                        mode: index === exitMessages.length - 1 ? 128 : 1 // 128 for last (sweep), 1 for fee (pay separate)
                     };
                 })
             ];
             
-            // 4. Wrap with W5 Keeper Request
-            // CRITICAL: Do NOT revoke keeper here - it prevents the refund from working!
-            // The vault will be emptied by mode 128, so keeper revocation is unnecessary
-            const wrappedCell = await wrapWithKeeperRequest(
-                targetAddress, 
-                rawMessages
-                // NO keeper revocation - let the vault empty naturally
-            );
-
-            // 5. Broadcast Transaction
-            const txs = [{
-                address: targetAddress.toString({ bounceable: false }),
-                value: '150000000', // Increased to 0.15 TON to cover multi-action gas
-                cell: wrappedCell.toBoc().toString('base64')
-            }];
-
-            Logger.info('ExecutionService', 'Broadcasting exit transaction...', positionId);
+            // 4. Wrap with Owner Request (Internal Message)
+            // The User (Owner) signs this payload and sends it to the Vault.
+            // Opcode: 0x706c7573 ('plus')
             
-            const result = await firstValueFrom(sendTransactions$(txs));
-            
-            // We use the seqno as a temporary reference. Real hash would require parsing the message cell.
-            const txHash = `exit_seq_${result.seqno}_${Date.now()}`; 
-            
-            // 6. Update Position Status to 'processing_exit' instead of jumping to 'closed'
-            // This ensures we validate the refund on-chain before final closure.
-            await prisma.position.update({
-                where: { id: positionId },
-                data: { 
-                    status: 'processing_exit',
-                    exitTxHash: txHash,
-                    updatedAt: new Date()
-                }
-            });
+            // Note: We do NOT include the keeper refund here directly because the User pays gas.
+            // If we want to revoke the keeper, we can add a removeExtension action, but 
+            // for a full exit (sweep), the account is effectively emptied. 
+            // Revocation is safer done via separate admin tool if needed, 
+            // or we could add it here if `wrapWithOwnerRequest` supported extension removal args.
+            // For now, let's just execute the sweep.
 
-            Logger.warn('ExecutionService', 'REFUND_SEQUENCE_INITIATED', positionId, {
-                reason,
-                txHash,
-                mode: position.status,
-                liquidationSummary: liquidationDescription,
-                feeSummary: summary,
-                seqno: result.seqno
-            });
+            const { wrapWithOwnerRequest } = await import('./w5-utils');
+            const wrappedCell = await wrapWithOwnerRequest(rawMessages);
 
-            // 7. ASYNC VALIDATION: Start polling for refund completion
-            // We don't await this to return the API response quickly
-            (async () => {
-                try {
-                    await ExecutionService.validateRefundAndRevoke(positionId, targetAddress.toString());
-                } catch (e) {
-                    Logger.error('ExecutionService', 'ASYNC_REFUND_VALIDATION_FAILED', positionId, { error: (e as Error).message });
-                }
-            })();
-
-            return txHash;
+            return {
+                payload: wrappedCell.toBoc().toString('base64'),
+                destination: targetAddress.toString()
+            };
 
         } catch (error: unknown) {
             const err = error instanceof Error ? error : new Error(String(error));
-            Logger.error('ExecutionService', 'EXECUTION_FAILURE', positionId, { error: err.message, stack: err.stack });
+            Logger.error('ExecutionService', 'BUILD_EXIT_PAYLOAD_FAILED', positionId, { error: err.message });
             throw err;
         }
     },
@@ -469,14 +360,14 @@ export const ExecutionService = {
 
              // 0. Safety Check
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
-             await ExecutionService.ensureSolvencyOrPanic(positionId, targetAddress.toString(), 0.05, 'ENTER_STASIS');
+             await ExecutionService.ensureSolvencyOrStasis(positionId, targetAddress.toString(), 0.05, 'ENTER_STASIS');
 
 
-             const keeperRefundMsg = {
-                  to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
-                  value: toNano('0.05'),
-                  body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Enter Stasis').endCell()
-             };
+            const keeperRefundMsg = {
+                 to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
+                 value: toNano('0.05'),
+                 body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Enter Stasis').endCell()
+            };
 
              // 3. Wrap & Broadcast
              const rawMessages = [
@@ -542,7 +433,7 @@ export const ExecutionService = {
 
              // 0. Safety Check
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
-             await ExecutionService.ensureSolvencyOrPanic(positionId, targetAddress.toString(), 0.05, 'EXIT_STASIS');
+             await ExecutionService.ensureSolvencyOrStasis(positionId, targetAddress.toString(), 0.05, 'EXIT_STASIS');
 
              const keeperRefundMsg = {
                   to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
@@ -604,7 +495,7 @@ export const ExecutionService = {
                : Address.parse(position.user.walletAddress!);
 
             // 0. Safety Check
-            await ExecutionService.ensureSolvencyOrPanic(positionId, targetAddress.toString(), 0.05, 'REBALANCE_POSITION');
+            await ExecutionService.ensureSolvencyOrStasis(positionId, targetAddress.toString(), 0.05, 'REBALANCE_POSITION');
 
             const keeperRefundMsg = {
                 to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
@@ -691,7 +582,7 @@ export const ExecutionService = {
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
 
              // 0. Safety Check
-             await ExecutionService.ensureSolvencyOrPanic(positionId, targetAddress.toString(), 0.05, 'REBALANCE_DELTA');
+             await ExecutionService.ensureSolvencyOrStasis(positionId, targetAddress.toString(), 0.05, 'REBALANCE_DELTA');
 
              const keeperRefundMsg = {
                   to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
@@ -731,78 +622,212 @@ export const ExecutionService = {
     },
 
     /**
-     * Polls the vault balance and revokes the keeper extension once the refund is validated.
+     * Monitors the vault after an exit request.
+     * 1. Detects if funds arrive (Liquidation success).
+     * 2. Sweeps funds to User (using Keeper extension).
+     * 3. Marks position as Closed.
      */
-    validateRefundAndRevoke: async (positionId: string, vaultAddress: string) => {
-        Logger.info('ExecutionService', 'Starting refund validation polling...', positionId, { vaultAddress });
+    monitorAndSweep: async (positionId: string, vaultAddress: string, userWalletAddress: string) => {
+        Logger.info('ExecutionService', 'Starting exit monitoring...', positionId, { vaultAddress });
 
-        const maxRetries = 30; // 30 retries * 10s = 300s (5 mins)
+        const maxRetries = 60; // 60 retries * 10s = 600s (10 mins)
         const pollIntervalMs = 10000;
 
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const balanceNano = await getTonBalance(vaultAddress);
-                const balanceTON = Number(fromNano(balanceNano));
+        // Flags to track state across polls
+        let fundsSwept = false;
+        let fundsDetected = false;
 
-                Logger.info('ExecutionService', `Polling vault balance: ${balanceTON} TON (Retry ${i+1}/${maxRetries})`, positionId);
-
-                // Validation Threshold: If balance is low enough, it means the sweep was successful
-                // Validation Threshold: If balance is lower than before? 
-                // Or checking if the *USER* received funds?
-                // Checking vault balance: It should have decreased to ~0.1
+        // Helper to sweep
+        const sweepFunds = async () => {
+             Logger.info('ExecutionService', 'Funds Detected! Executing SWEEP...', positionId);
+             try {
+                const targetAddress = Address.parse(vaultAddress);
+                const userAddress = Address.parse(userWalletAddress);
                 
-                if (balanceTON < 0.2) {
-                    Logger.warn('ExecutionService', 'REFUND_VALIDATED: Vault balance reduced to safe limit. Extension kept.', positionId);
-                    
-                    // Update Status to closed
-                    await prisma.position.update({
-                        where: { id: positionId },
-                        data: { status: 'closed', updatedAt: new Date() }
-                    });
+                 // Build Sweep Payload (Mode 128 to User)
+                 const sweepMsg = {
+                    to: userAddress,
+                    value: BigInt(0), 
+                    mode: 128, // CARRY_ALL_REMAINING_BALANCE
+                    body: beginCell().storeUint(0, 32).storeStringTail('Pamelo: Position Closed').endCell()
+                };
 
-                    Logger.info('ExecutionService', 'POSITION_CLOSED_VAULT_PRESERVED', positionId);
-                    return;
+                 const wrappedCell = await wrapWithKeeperRequest(targetAddress, [sweepMsg]);
+
+                 const txs = [{
+                    address: targetAddress.toString(),
+                    value: '50000000', // 0.05 TON for gas
+                    cell: wrappedCell.toBoc().toString('base64')
+                 }];
+
+                 await firstValueFrom(sendTransactions$(txs));
+                 fundsSwept = true;
+                 Logger.info('ExecutionService', 'SWEEP_TX_SENT', positionId);
+             } catch (e) {
+                 Logger.error('ExecutionService', 'SWEEP_FAILED', positionId, { error: (e as Error).message });
+             }
+        };
+
+        // Start Polling
+        // Run as background structure (async loop)
+        (async () => {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const balanceNano = await getTonBalance(vaultAddress);
+                    const balanceTON = Number(fromNano(balanceNano));
+
+                    Logger.info('ExecutionService', `Monitor Pulse: ${balanceTON} TON`, positionId, { retry: i });
+
+                    // Case A: Funds Arrived (e.g. > 0.25 TON) -> Trigger Sweep
+                    if (balanceTON > 0.25 && !fundsSwept) {
+                        fundsDetected = true;
+                        await sweepFunds();
+                        // Don't return yet, wait for balance to drop to confirm
+                    }
+
+                    // Case B: Safe/Empty State (e.g. < 0.25 TON) -> Confirm Close
+                    // We check if we either just swept OR if we are just verifying a clean state
+                    if (balanceTON < 0.25) {
+                         // If we saw funds and now they are gone, OR if we never saw large funds but time passed (maybe user swept manually?)
+                         // Actually, if we never saw funds, we might be waiting for them to arrive. 
+                         // But if 10 mins pass and no funds, we eventually timeout.
+                         
+                         // Determine if we should close.
+                         // If we triggered a sweep, we definitely close.
+                         // If the balance is already effectively zero and we didn't sweep, maybe the user did.
+                         if (fundsSwept || i > 5) {
+                             Logger.info('ExecutionService', 'VAULT_EMPTY_CONFIRMED. Closing Position.', positionId);
+                             
+                             await prisma.position.update({
+                                 where: { id: positionId },
+                                 data: { status: 'closed', updatedAt: new Date() }
+                             });
+                             
+                             return; // Exit Loop
+                         }
+                    }
+                } catch (e) {
+                    Logger.warn('ExecutionService', 'Monitor Error', positionId, { error: (e as Error).message });
                 }
-            } catch (e) {
-                Logger.warn('ExecutionService', `Polling error: ${(e as Error).message}. Retrying...`, positionId);
+
+                await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
             }
-
-            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-        }
-
-        Logger.error('ExecutionService', 'REFUND_VALIDATION_TIMEOUT: Vault balance did not clear within 5 minutes.', positionId);
+            Logger.warn('ExecutionService', 'MONITOR_TIMEOUT', positionId);
+        })();
     },
 
     /**
-     * Standalone method to remove the Keeper as an extension from a vault.
+     * Executes a full force-exit on a vault.
+     * Closes any open Storm/StonFi positions and then sweeps all TON to the user.
+     * This is triggered by the Keeper Monitor after a user deposit.
      */
-    revokeKeeper: async (positionId: string, vaultAddress: string) => {
-        Logger.info('ExecutionService', 'Revoking Keeper extension...', positionId, { vaultAddress });
+    forceVaultExit: async (positionId: string, vaultAddress: string, userWalletAddress: string) => {
+        Logger.info('ExecutionService', 'Executing FORCE_VAULT_EXIT...', positionId, { vaultAddress });
 
         try {
-            const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!);
-            const targetAddress = Address.parse(vaultAddress);
+            const position = await prisma.position.findUnique({ 
+                where: { id: positionId },
+                include: { user: true }
+            });
 
-            // Build payload with NO messages, only extension removal
-            const wrappedCell = await wrapWithKeeperRequest(
-                targetAddress,
-                [], // Empty messages
-                keeperAddress // Revoke ourselves
-            );
+            if (!position) throw new Error("Position not found");
+
+            const messages: any[] = [];
+            const vaultAddrStr = vaultAddress;
+            const ticker = position.pairId.split('-')[0].toUpperCase();
+
+            // 1. Close Positions (if Active)
+            if (position.status === 'active' || position.status === 'stasis_active' || position.status === 'processing_exit' || position.status === 'exit_monitoring') {
+                Logger.info('ExecutionService', `Position Active/Processing. Generating Close/Sell payloads for ${ticker}...`, positionId);
+
+                // Close Short
+                try {
+                    const { buildClosePositionPayload } = await import('./storm');
+                    const closeShortTx = await buildClosePositionPayload({
+                        vaultAddress: vaultAddrStr,
+                        positionId: position.id,
+                        symbol: ticker
+                    });
+                    if (closeShortTx) {
+                         messages.push({
+                            to: Address.parse(closeShortTx.to),
+                            value: BigInt(closeShortTx.value || 0),
+                            body: closeShortTx.body ? Cell.fromBase64(closeShortTx.body) : undefined 
+                         });
+                    }
+                } catch (e) {
+                    Logger.warn('ExecutionService', `[FORCE_EXIT] Could not build close short.`, positionId);
+                }
+
+                // Sell Spot
+                try {
+                    if (position.spotAmount > 0) {
+                        const quote = await swapcoffee.getQuote(ticker, 'TON', toNano(position.spotAmount.toString()).toString());
+                        const minOut = (BigInt(quote.to_amount) * BigInt(95)) / BigInt(100);
+
+                        const sellSpotTx = await swapcoffee.buildSwapTx({
+                            userWalletAddress: vaultAddrStr,
+                            fromToken: ticker,
+                            toToken: 'TON',
+                            amount: position.spotAmount.toString(),
+                            minOutput: minOut.toString()
+                        });
+
+                        messages.push({
+                            to: Address.parse(sellSpotTx.to),
+                            value: BigInt(sellSpotTx.value),
+                            body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body
+                        });
+                    }
+                } catch (e) {
+                     Logger.warn('ExecutionService', `[FORCE_EXIT] Could not build spot sell.`, positionId);
+                }
+            }
+
+            // 2. Refund 0.05 TON to Keeper (Gas Cost) - Before Status Check? No, always.
+            // This ensures Keeper is refunded for the gas it spent triggering this.
+            // For User Exits, Keeper gets +0.05 (User), spends 0.05 (Vault), gets +0.05 (Vault), Refunds User 0.03.
+            // Net = 0.02.
+            messages.push({
+                to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
+                value: toNano('0.05'),
+                body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Exit').endCell()
+            });
+
+            // 3. Add User Sweep (Carry all remaining)
+            messages.push({
+                to: Address.parse(userWalletAddress),
+                value: BigInt(0),
+                body: beginCell().storeUint(0, 32).storeStringTail('Pamelo: Automated Refund').endCell(),
+                mode: 128
+            });
+
+            // 3. Wrap & Send
+            const targetAddress = Address.parse(vaultAddrStr);
+            const wrappedCell = await wrapWithKeeperRequest(targetAddress, messages);
 
             const txs = [{
-                address: targetAddress.toString({ bounceable: false }),
-                value: '50000000', // 0.05 TON for gas
+                address: targetAddress.toString(),
+                value: '50000000', // Use the 0.05 TON provided by the user
                 cell: wrappedCell.toBoc().toString('base64')
+            },
+            // FEE REFUND: Keeper sends 0.03 TON back to user (User paid 0.05, Fee is 0.02)
+            {
+                address: userWalletAddress,
+                value: '30000000', // 0.03 TON
+                cell: beginCell().storeUint(0, 32).storeStringTail("Pamelo: Exit Refund").endCell().toBoc().toString('base64')
             }];
 
             const result = await firstValueFrom(sendTransactions$(txs));
-            Logger.info('ExecutionService', 'KEEPER_REVOKE_BROADCASTED', positionId, { seqno: result.seqno });
-            
+            Logger.info('ExecutionService', 'FORCE_EXIT_BROADCASTED', positionId, { seqno: result.seqno });
+
+            // 4. Fire monitor to confirm closure in DB
+            await ExecutionService.monitorAndSweep(position.id, vaultAddrStr, userWalletAddress);
+
         } catch (error: unknown) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            Logger.error('ExecutionService', 'KEEPER_REVOKE_FAILED', positionId, { error: err.message });
-            // We don't throw here to avoid failing the async validation flow permanently
+             const err = error instanceof Error ? error : new Error(String(error));
+             Logger.error('ExecutionService', 'FORCE_VAULT_EXIT_FAILED', positionId, { error: err.message });
+             throw err;
         }
     }
 };

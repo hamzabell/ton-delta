@@ -130,22 +130,13 @@ describe('Core Features E2E Verification', () => {
             });
         });
 
-        it('given an undeployed vault: it should throw/exit', async () => {
-             const mockPosition = {
-                id: mockPositionId,
-                status: 'pending',
-                vaultAddress: mockVaultAddress, 
-                user: { walletAddress: mockUserAddress }
-             };
-             // @ts-expect-error
-             prisma.position.findUnique.mockResolvedValue(mockPosition);
-             
-             const { checkContractDeployed } = await import('../lib/w5-utils');
-             // @ts-expect-error
-             checkContractDeployed.mockResolvedValue(false);
+        it('should trigger stasis on solvency failure', async () => {
+            // Mock Solvency Failure
+            (getTonBalance as jest.Mock).mockResolvedValue(toNano('0.01')); 
 
-             await expect(ExecutionService.enterInitialPosition(mockPositionId))
-                 .rejects.toThrow("Vault not deployed");
+            await expect(ExecutionService.ensureSolvencyOrStasis('pos-123', 'address', 0.05, 'TEST_ACTION'))
+                .rejects
+                .toThrow('SOLVENCY_STASIS_TRIGGERED');
         });
     });
 
@@ -198,8 +189,8 @@ describe('Core Features E2E Verification', () => {
         });
     });
 
-    describe('Feature 3: Exit Max Loss (Panic Unwind)', () => {
-        it('given max loss reached: it should atomically Close Short and Sell Spot to TON', async () => {
+    describe('Feature 3: User Exit Payload Generation', () => {
+        it('given user exit request: it should generate correct payload', async () => {
              // Setup
              const mockPosition = {
                  id: mockPositionId,
@@ -216,9 +207,12 @@ describe('Core Features E2E Verification', () => {
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
              // Execute
-             await ExecutionService.executePanicUnwind(mockPositionId, 'MAX_LOSS');
+             const result = await ExecutionService.buildUserExitPayload(mockPositionId, 'USER_EXIT');
 
              // Assert
+             expect(result).toHaveProperty('payload');
+             expect(result).toHaveProperty('destination');
+             
              // 1. Close Position
              const { buildClosePositionPayload } = await import('../lib/storm');
              expect(buildClosePositionPayload).toHaveBeenCalled();
@@ -227,11 +221,6 @@ describe('Core Features E2E Verification', () => {
              expect(stonfi.buildSwapTx).toHaveBeenCalledWith(expect.objectContaining({
                  fromToken: 'DOGS',
                  toToken: 'TON'
-             }));
-
-             // 3. Status Update -> closed
-             expect(prisma.position.update).toHaveBeenCalledWith(expect.objectContaining({
-                 data: { status: 'closed' }
              }));
         });
     });
@@ -294,9 +283,9 @@ describe('Core Features E2E Verification', () => {
         });
     });
 
-    describe('Feature 5: Panic Exit Anytime', () => {
-        it('given user panic in Active state: it should execute Unwind', async () => {
-             // Reuse Logic from Feature 3, just different reason
+    describe('Feature 5: User Panic Exit', () => {
+        it('given user panic in Active state: it should generate exit payload', async () => {
+             // Reuse Logic from Feature 3
              const mockPosition = {
                 id: mockPositionId,
                 status: 'active',
@@ -311,11 +300,11 @@ describe('Core Features E2E Verification', () => {
              // @ts-expect-error
              prisma.position.findUnique.mockResolvedValue(mockPosition);
 
-             await ExecutionService.executePanicUnwind(mockPositionId, 'USER_PANIC');
+             await ExecutionService.buildUserExitPayload(mockPositionId, 'USER_PANIC');
 
-             expect(prisma.position.update).toHaveBeenCalledWith(expect.objectContaining({
-                data: { status: 'closed' }
-            }));
+             // We don't check for 'closed' status here anymore because status update happens in API
+             const { buildClosePositionPayload } = await import('../lib/storm');
+             expect(buildClosePositionPayload).toHaveBeenCalled();
         });
     });
 

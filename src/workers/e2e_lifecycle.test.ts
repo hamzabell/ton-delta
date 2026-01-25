@@ -34,7 +34,7 @@ vi.mock('@/lib/ema', () => ({
 vi.mock('@/lib/execution', () => ({
     ExecutionService: {
         enterInitialPosition: vi.fn(),
-        executePanicUnwind: vi.fn(),
+        buildUserExitPayload: vi.fn(),
         enterStasis: vi.fn(),
     }
 }));
@@ -155,7 +155,7 @@ describe('E2E Bot Lifecycle & Risk Guards', () => {
         await safetyCheckJob({ id: 'safety_1', data: { positionId: 'pos_123' } } as any);
 
         // Should NOT Panic because EMA 4.9 keeps equity high
-        expect(ExecutionService.executePanicUnwind).not.toHaveBeenCalled();
+        expect(ExecutionService.enterStasis).not.toHaveBeenCalled();
     });
 
     it('Scenario 4: Sustained Crash -> Max Loss Trigger', async () => {
@@ -183,7 +183,7 @@ describe('E2E Bot Lifecycle & Risk Guards', () => {
         
         await safetyCheckJob({ id: 'safety_2', data: { positionId: 'pos_123' } } as any);
 
-        expect(ExecutionService.executePanicUnwind).toHaveBeenCalled();
+        expect(ExecutionService.enterStasis).toHaveBeenCalled();
     });
 
 });

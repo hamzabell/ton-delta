@@ -69,6 +69,7 @@ export default function PositionDetailsBottomSheet({
                     <span className={clsx(
                         "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
                         position.status === 'active' ? "bg-[#E2FF00]/10 text-[#E2FF00]" :
+                        position.status === 'processing_exit' || position.status === 'exit_monitoring' ? "bg-orange-500/10 text-orange-500" :
                         position.status.includes('stasis') ? "bg-blue-500/10 text-blue-400" :
                         "bg-white/10 text-white/40"
                     )}>
@@ -76,7 +77,9 @@ export default function PositionDetailsBottomSheet({
                          position.status === 'stasis_active' ? 'Stasis (Staked)' : 
                          position.status === 'stasis' ? 'Stasis (Cash)' : 
                          position.status === 'stasis_pending_stake' ? 'Stasis (Pending)' : 
-                         position.status === 'pending_entry' ? 'Pending Entry' : 'Closed'}
+                         position.status === 'pending_entry' ? 'Pending Entry' : 
+                         position.status === 'pending_entry_verification' ? 'Verifying Entry...' : 
+                         position.status === 'processing_exit' || position.status === 'exit_monitoring' ? 'Processing Exit' : 'Closed'}
                     </span>
                   </div>
               </div>
@@ -88,6 +91,22 @@ export default function PositionDetailsBottomSheet({
               <X className="w-5 h-5 text-white/40" />
             </button>
           </div>
+
+          {/* Verification Warning */}
+          {position.status === 'pending_entry_verification' && (
+             <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center gap-3">
+                 <RefreshCw className="w-5 h-5 text-blue-400 animate-spin" />
+                 <div className="flex-1">
+                     <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Entry in Progress</p>
+                     <p className="text-[10px] text-blue-400/80 mt-0.5">We are verifying your spot and short trades on-chain.</p>
+                 </div>
+                 {position.entryTxHash && !position.entryTxHash.startsWith('entry_seq_') && (
+                     <a href={`https://tonviewer.com/transaction/${position.entryTxHash}`} target="_blank" rel="noreferrer" className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors">
+                        <ExternalLink className="w-4 h-4 text-blue-400" />
+                     </a>
+                 )}
+             </div>
+          )}
 
           {/* Max Loss Warning */}
           {isMaxLossTriggered && (
@@ -150,13 +169,13 @@ export default function PositionDetailsBottomSheet({
             </div>
             
             <div className="grid grid-cols-2 gap-3">
-                 <a href={`https://swap.coffee/dex?pair=${ticker}_TON`} target="_blank" rel="noreferrer" 
+                 <a href={position.spotTxHash ? `https://tonviewer.com/transaction/${position.spotTxHash}` : `https://swap.coffee/dex?pair=${ticker}_TON`} target="_blank" rel="noreferrer" 
                     className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-blue-400 uppercase tracking-widest flex items-center gap-2">
                          Spot <ExternalLink className="w-3 h-3" />
                      </span>
                  </a>
-                 <a href={`https://storm.trade/ton/futures/${ticker}-TON`} target="_blank" rel="noreferrer" 
+                 <a href={position.stormTxHash ? `https://tonviewer.com/transaction/${position.stormTxHash}` : `https://storm.trade/ton/futures/${ticker}-TON`} target="_blank" rel="noreferrer" 
                     className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-purple-400 uppercase tracking-widest flex items-center gap-2">
                          Short <ExternalLink className="w-3 h-3" />
@@ -197,12 +216,12 @@ export default function PositionDetailsBottomSheet({
           {/* Actions */}
             <button
               onClick={() => onExit(position.id)}
-              disabled={isProcessing || position.status === 'closed' || position.status === 'processing_exit'}
+              disabled={isProcessing || position.status === 'closed' || position.status === 'processing_exit' || position.status === 'exit_monitoring'}
               className="w-full py-5 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isProcessing ? (
                   <>Processing Exit...</>
-              ) : position.status === 'processing_exit' ? (
+              ) : position.status === 'processing_exit' || position.status === 'exit_monitoring' ? (
                   <>Exit Pending Verification...</>
               ) : (
                   <>

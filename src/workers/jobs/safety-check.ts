@@ -78,8 +78,8 @@ async function processPositionSafety(positionId: string) {
         console.warn(`[Watchman] EMERGENCY UNWIND for ${positionId} (Equity: ${realTotalEquity} < Floor: ${position.principalFloor})`);
         
         try {
-            await ExecutionService.executePanicUnwind(positionId, "Safety Check: Equity below Principal Floor");
-            return { emergencyTriggered: true, executed: true };
+            await ExecutionService.enterStasis(position.id);
+            return { emergencyTriggered: true, executed: true, mode: 'stasis' };
 
         } catch (error) {
             console.error(`[Watchman] CRITICAL: Failed to execute Emergency Unwind for ${positionId}`, error);

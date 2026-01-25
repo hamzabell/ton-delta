@@ -6,6 +6,14 @@ import { PrismaClient } from '@prisma/client';
 // but only when functionality is actually accessed.
 
 const prismaClientSingleton = () => {
+  const dbUrl = process.env.DATABASE_URL || '';
+  const dbHost = dbUrl.split('@')[1]?.split(':')[0] || 'unknown';
+  console.log(`[Prisma] Initializing with DB Host: ${dbHost}`);
+  
+  if (dbHost.includes('render.com')) {
+    console.warn('⚠️ WARNING: Connecting to Render.com database instead of Supabase! Check your DATABASE_URL environment variable.');
+  }
+  
   return new PrismaClient({});
 };
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ExecutionService } from '@/lib/execution';
 import { Logger } from '@/services/logger';
+import { beginCell } from '@ton/core';
 
 export async function POST(
   request: Request,
@@ -30,21 +31,45 @@ export async function POST(
       pairId: position.pairId 
     });
 
-    // Call the Universal Exit Logic
-    // This handles Active, Cash Stasis, and Yield Stasis atomically.
-    const txHash = await ExecutionService.executePanicUnwind(positionId, "USER_REQUESTED_EXIT");
+    // Call the Universal Exit Logic (Payload generation)
+    // This allows the user to sign the transaction.
+    const { payload, destination } = await ExecutionService.buildUserExitPayload(positionId, "USER_REQUESTED_EXIT");
 
-    await Logger.info('API', 'POSITION_EXIT_INITIATED', positionId, { txHash });
+    await Logger.info('API', 'POSITION_EXIT_PAYLOAD_GENERATED', positionId);
 
-    // Get the vault address to construct explorer link
-    const vaultAddress = position.vaultAddress || position.user.walletAddress;
-    const explorerLink = `https://tonviewer.com/${vaultAddress}`;
+    // OPTIMISTIC UPDATE REMOVED:
+    // We do NOT update to 'processing_exit' yet. 
+    // The Frontend will show a loading state, and the STATUS will change 
+    // only when the Keeper detects the 0.05 TON trigger on-chain.
+    // This prevents the position from becoming "stuck" if the user cancels the signing.
 
+    // Define keeperAddress for the response
+    const keeperAddress = process.env.NEXT_PUBLIC_KEEPER_ADDRESS!;
+
+    // To ensure the "refund [id]" memo is exactly as requested:
+    const commentPayload = beginCell()
+        .storeUint(0, 32)
+        .storeStringTail(`refund ${positionId}`)
+        .endCell()
+        .toBoc()
+        .toString('base64');
+
+    // Forcing a structural change to bypass stale Turbopack cache
     return NextResponse.json({ 
       success: true, 
-      txHash,
-      explorerLink,
-      message: "Exit Sequence Initiated. Watch your wallet for the sweep." 
+      triggerAddress: keeperAddress,
+      triggerAmount: "0.05",
+      transaction: {
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+            {
+                address: keeperAddress,
+                amount: "50000000",
+                payload: commentPayload 
+            }
+        ]
+      },
+      message: `Please sign the transaction to send 0.05 TON to the Keeper with the comment "refund ${positionId}". This will trigger your automated exit.`
     });
 
   } catch (error) {

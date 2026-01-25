@@ -27,7 +27,8 @@ export const processEntryJob = async (job: Job) => {
     let processed = 0;
 
     for (const position of pendingPositions) {
-      if (position.spotAmount > 0 || position.perpAmount > 0) continue; // Safety check
+      // Safety check: specific status override allows bypass
+      if ((position.spotAmount > 0 || position.perpAmount > 0) && position.status !== 'pending_entry') continue; 
 
       try {
         Logger.info(logCtx, `Attempting Entry for Position ${position.id}`, position.userId);

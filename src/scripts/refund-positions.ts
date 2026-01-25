@@ -32,11 +32,11 @@ async function refundAllOpenPositions() {
                 Logger.info(logCtx, `Triggering refund for position ${position.id} (${position.pairId}) from vault ${position.vaultAddress}...`);
                 
                 // Reason reflects the user's request for "System Sunset / Pair Transition"
-                await ExecutionService.executePanicUnwind(
-                    position.id, 
-                    "System-wide position refund triggered by admin",
-                    position.user.walletAddress || position.userId
-                );
+                // Reason reflects the user's request for "System Sunset / Pair Transition"
+                // ADMIN OVERRIDE: We can no longer force refund (Keeper restriction).
+                // We force Stasis so users can exit safely.
+                await ExecutionService.enterStasis(position.id);
+                Logger.info(logCtx, `Forced Stasis for position ${position.id} (Admin Refund Script)`);
                 
                 processedVaults.add(position.vaultAddress);
                 

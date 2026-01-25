@@ -16,7 +16,9 @@ export default function PortfolioPage() {
   const { positions: apiPositions, mutate } = usePositions(null, wallet?.account.address);
   const { pairs } = usePairs();
 
-  const positions = apiPositions.map(pos => {
+  const positions = apiPositions
+    .filter(pos => pos.status !== 'closed') // Exclude closed positions from equity calc
+    .map(pos => {
     const pair = pairs.find(p => p.id === pos.pairId);
     const initialEstimate = pos.principalFloor / 0.85; 
     return {

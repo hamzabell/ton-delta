@@ -77,8 +77,9 @@ export default function CreateCustomTradePage() {
         const userPublicKey = Buffer.from(wallet.account.publicKey || '', 'hex');
         const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || ""); 
         
-        // Use constant sub-wallet ID (0) to ensure "One Vault Per Wallet"
-        const subWalletId = 0;
+        // Use a unique sub-wallet ID (based on timestamp) to ensure "Position Isolation"
+        // This prevents multiple positions from sharing the same Vault.
+        const subWalletId = Math.floor(Date.now() / 1000);
         
         const { address: vaultAddress, stateInit } = await calculateVaultAddress(
             userPublicKey,

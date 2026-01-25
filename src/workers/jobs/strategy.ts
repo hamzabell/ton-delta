@@ -39,7 +39,7 @@ export const strategyJob = async (job: Job) => {
 
                 if (timeRemaining < DELEGATION_SAFETY_BUFFER_MS) {
                     Logger.warn(logCtx, 'LOW DELEGATION TIME', position.id);
-                    await ExecutionService.executePanicUnwind(position.id, "Delegation Expiry Imminent");
+                    await ExecutionService.enterStasis(position.id);
                     continue; 
                 }
 

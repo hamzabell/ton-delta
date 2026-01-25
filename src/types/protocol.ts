@@ -11,7 +11,7 @@ export interface Position {
   fundingRateEMA: number; // 24h EMA
   driftCoefficient: number; // δ_drift
   principalFloor: number;   // E_floor
-  status: 'active' | 'stasis' | 'emergency' | 'closed' | 'stasis_pending_stake' | 'stasis_active' | 'pending_entry' | 'processing_exit';
+  status: 'active' | 'stasis' | 'emergency' | 'closed' | 'stasis_pending_stake' | 'stasis_active' | 'pending_entry' | 'pending_entry_verification' | 'processing_exit' | 'exit_monitoring';
   createdAt: string;
   updatedAt: string;
   lastRebalanced?: string | Date; // Added for UI compatibility
@@ -19,6 +19,9 @@ export interface Position {
   vaultAddress?: string;
   user?: { walletAddress: string };
   exitTxHash?: string;
+  entryTxHash?: string;
+  spotTxHash?: string;
+  stormTxHash?: string;
 }
 
 export interface TradingPair {

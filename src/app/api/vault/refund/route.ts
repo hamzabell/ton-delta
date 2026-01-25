@@ -18,7 +18,35 @@ export async function POST(request: Request) {
     const balance = await getTonBalance(vaultAddress);
     const balanceTON = Number(fromNano(balance));
 
+    // Check for "Ghost" positions first (Active/Stasis/Processing but balance is near zero)
+    // This allows the manual tool to serve as a "Sync Status" button.
+    const { prisma } = await import('@/lib/prisma');
+    const existingPosition = await prisma.position.findFirst({
+        where: {
+            OR: [
+                { vaultAddress: vaultAddress },
+                { user: { walletAddress: vaultAddress } }
+            ],
+            status: { in: ['active', 'stasis', 'processing_exit', 'stasis_active'] }
+        }
+    });
+
     if (balanceTON < 0.01) {
+      if (existingPosition) {
+          // Case: Vault is empty, but position says Active. This is a "Stuck" position.
+          // Action: Force Close.
+          await prisma.position.update({
+             where: { id: existingPosition.id },
+             data: { status: 'closed', updatedAt: new Date() }
+          });
+          console.log(`[Recovery] Force-Closed stuck position ${existingPosition.id} (Vault Empty)`);
+          return NextResponse.json({
+             success: true,
+             message: "Position synced: Marked as closed (Vault was already empty).",
+             amountRefunded: "0.000"
+          });
+      }
+
       return NextResponse.json({ error: 'Vault balance is zero or too low' }, { status: 400 });
     }
 
@@ -45,6 +73,7 @@ export async function POST(request: Request) {
     );
 
     // 3. Broadcast
+
     const txs = [{
       address: vaultAddress,
       value: '50000000', // 0.05 TON for gas
@@ -53,6 +82,20 @@ export async function POST(request: Request) {
 
     console.log(`[Recovery] Attempting sweep for ${vaultAddress} to ${USER_WALLET}`);
     const result = await firstValueFrom(sendTransactions$(txs));
+
+    // 4. Update Database
+    // Check if there is an active/stasis position for this vault and close it
+    // We already fetched existingPosition above, so reuse it.
+    if (existingPosition) {
+        await prisma.position.update({
+            where: { id: existingPosition.id },
+            data: { 
+                status: 'closed',
+                updatedAt: new Date()
+            }
+        });
+        console.log(`[Recovery] Marked position ${existingPosition.id} as CLOSED.`);
+    }
 
     return NextResponse.json({
       success: true,

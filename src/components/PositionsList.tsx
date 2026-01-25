@@ -8,7 +8,7 @@ import PositionFilterBottomSheet from "./PositionFilterBottomSheet";
 import PositionDetailsBottomSheet from "./PositionDetailsBottomSheet";
 import clsx from "clsx";
 
-import { useTonWallet } from "@tonconnect/ui-react";
+import { useTonWallet, useTonConnectUI } from "@tonconnect/ui-react";
 
 interface PositionsListProps {
   onRefetch?: () => void;
@@ -19,6 +19,7 @@ const ITEMS_PER_PAGE = 5;
 
 export default function PositionsList({ onRefetch, userId: propUserId }: PositionsListProps) {
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const userId = propUserId || wallet?.account.address;
   const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -55,12 +56,11 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
   }, [positions.length, visibleCount]);
 
   // Derived Values
-  const [filterStatus, setFilterStatus] = useState<'OPEN' | 'CLOSED' | 'PROCESSING'>('OPEN');
+  const [filterStatus, setFilterStatus] = useState<'OPEN' | 'CLOSED'>('OPEN');
 
   // Derived Values
   const filteredPositions = positions.filter(p => {
-    if (filterStatus === 'OPEN') return p.status !== 'closed' && p.status !== 'processing_exit';
-    if (filterStatus === 'PROCESSING') return p.status === 'processing_exit';
+    if (filterStatus === 'OPEN') return p.status !== 'closed';
     return p.status === 'closed';
   });
   
@@ -94,8 +94,19 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
         throw new Error(data.error || 'Failed to initiate exit');
       }
 
-      const explorerLink = data.explorerLink || '';
-      alert(`Exit Initiated Successfully!\n\nTransaction: ${data.txHash}\n\nView on explorer:\n${explorerLink}\n\n${data.message}`);
+      if (data.transaction) {
+          // User needs to sign
+          await tonConnectUI.sendTransaction(data.transaction);
+          
+          // SUCCESS: User signed. Now we update the status optimistically.
+          await fetch(`/api/positions/${id}/confirm-exit`, { method: 'POST' });
+
+          alert("Transition sent! Your position will face liquidation and the remaining funds will be swept to your wallet.");
+      } else {
+          // Fallback just in case (if API did it automatically? unlikely with current flow)
+          const explorerLink = data.explorerLink || '';
+          alert(`Exit Initiated Successfully!\n\nTransaction: ${data.txHash}\n\nView on explorer:\n${explorerLink}\n\n${data.message}`);
+      }
       
       setSelectedPositionId(null);
       // Force refetch to update UI
@@ -128,15 +139,6 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
                 )}
              >
                 Active
-             </button>
-             <button 
-                onClick={() => setFilterStatus('PROCESSING')}
-                className={clsx(
-                    "text-[10px] font-bold uppercase tracking-[0.3em] transition-colors",
-                    filterStatus === 'PROCESSING' ? "text-[#E2FF00]" : "text-white/20 hover:text-white/40"
-                )}
-             >
-                Processing
              </button>
              <button 
                 onClick={() => setFilterStatus('CLOSED')}
@@ -191,9 +193,18 @@ export default function PositionsList({ onRefetch, userId: propUserId }: Positio
                         {enriched.pairName}
                     </h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="w-1 h-1 rounded-full bg-[#E2FF00] shadow-[0_0_8px_rgba(226,255,0,0.4)] animate-pulse" />
-                        <span className="text-[8px] font-black text-[#E2FF00]/30 uppercase tracking-[0.2em] leading-none">
-                        Active Position
+                        <div className={clsx(
+                            "w-1 h-1 rounded-full shadow-[0_0_8px_rgba(226,255,0,0.4)] animate-pulse",
+                            pos.status === 'processing_exit' || pos.status === 'exit_monitoring' ? "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" : 
+                            pos.status === 'closed' ? "bg-white/20 shadow-none animate-none" : "bg-[#E2FF00]"
+                        )} />
+                        <span className={clsx(
+                            "text-[8px] font-black uppercase tracking-[0.2em] leading-none",
+                            pos.status === 'processing_exit' ? "text-orange-500/50" : 
+                            pos.status === 'closed' ? "text-white/20" : "text-[#E2FF00]/30"
+                        )}>
+                        {pos.status === 'processing_exit' || pos.status === 'exit_monitoring' ? "Processing Exit" : 
+                         pos.status === 'closed' ? "Closed Position" : "Active Position"}
                         </span>
                     </div>
                     </div>

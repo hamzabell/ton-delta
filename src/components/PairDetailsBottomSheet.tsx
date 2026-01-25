@@ -75,7 +75,10 @@ export default function PairDetailsBottomSheet({
         const keeperAddress = Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS || "");
         
         // 2. Derive Vault Address
-        const vault = await calculateVaultAddress(userPublicKey, keeperAddress);
+        // FIX: Use unique sub-wallet ID to ensure isolation
+        // This prevents multiple positions from sharing the same Vault.
+        const subWalletId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
+        const vault = await calculateVaultAddress(userPublicKey, keeperAddress, subWalletId);
         const vaultAddressStr = vault.address.toString();
 
         // 3. Send Transaction

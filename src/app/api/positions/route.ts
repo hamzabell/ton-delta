@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const pairId = searchParams.get('pairId');
 
     const whereClause: any = { 
-      status: { in: ['active', 'stasis', 'pending_entry', 'closed', 'refunding'] } 
+      status: { in: ['active', 'stasis', 'pending_entry', 'closed', 'refunding', 'processing_exit', 'stasis_active', 'stasis_pending_stake', 'pending_entry_verification', 'emergency'] } 
     };
     if (pairId) {
       whereClause.pairId = pairId;
@@ -38,7 +38,12 @@ export async function GET(request: Request) {
       } 
     });
 
-    return NextResponse.json({ positions });
+    return NextResponse.json({ positions }, {
+        headers: {
+            'Cache-Control': 'no-store, max-age=0, must-revalidate',
+            'CDN-Cache-Control': 'no-store'
+        }
+    });
   } catch (error) {
     // Silently return empty positions if DB is unavailable
     return NextResponse.json({ positions: [] }); 
@@ -110,10 +115,10 @@ export async function POST(request: Request) {
       data: {
         userId: user?.id || 'manual-uuid-placeholder', 
         pairId,
-        spotAmount: capitalTON / 2, 
-        perpAmount: capitalTON / 2, // simplified
-        spotValue: capitalTON / 2,
-        perpValue: capitalTON / 2,
+        spotAmount: 0, 
+        perpAmount: 0, 
+        spotValue: 0,
+        perpValue: 0,
         totalEquity: capitalTON,
         principalFloor: capitalTON * 0.85,
         entryPrice: 1.0, 
