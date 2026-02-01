@@ -4,7 +4,7 @@ import { buildAtomicExitTx } from './fees';
 import { sendTransactions$ } from './custodialWallet';
 import { firstValueFrom } from 'rxjs';
 import { Logger } from '../services/logger';
-import { buildClosePositionPayload, buildOpenPositionPayload } from './storm';
+import { buildClosePositionPayload, buildOpenPositionPayload, buildStopLossPayload, getMarkPrice$, getStormPositionAddress } from './storm';
 import { stonfi } from './stonfi';
 import { Buffer } from 'buffer';
 import { wrapWithKeeperRequest } from './w5-utils';
@@ -60,6 +60,10 @@ export const ExecutionService = {
      * Executes the initial entry (Spot + Short) for a new position.
      * Assumes Vault is deployed and funded with TON.
      */
+    /**
+     * Executes the initial entry (Spot + Short) for a new position.
+     * Assumes Vault is deployed and funded with TON.
+     */
     enterInitialPosition: async (positionId: string) => {
         Logger.info('ExecutionService', 'Executing INITIAL_ENTRY...', positionId);
 
@@ -77,17 +81,31 @@ export const ExecutionService = {
                 throw new Error("Vault not deployed");
             }
 
-            // Strategy: 50% Spot, 50% Margin (1x Short)
-            // NON-MOCK: Fetch actual on-chain balance
+            // --- IDEMPOTENCY / RECOVERY CHECK ---
+            const ticker = position.pairId.split('-')[0].toUpperCase();
+            let isSpotAcquired = false;
             const vaultAddrStr = position.vaultAddress || position.user.walletAddress!;
+            
+            if (ticker !== 'TON') {
+                try {
+                     const tokenAddress = position.tokenAddress || await stonfi.resolveTokenAddress(ticker);
+                     const jettonBal = await stonfi.getJettonBalance(vaultAddrStr, tokenAddress);
+                     const jettonAmount = Number(fromNano(jettonBal));
+                     
+                     if (jettonAmount > 0.1) {
+                         isSpotAcquired = true;
+                         Logger.info('ExecutionService', `Recovery Mode: Spot (${ticker}) already acquired (${jettonAmount}).`, positionId);
+                     }
+                } catch (e) {
+                    Logger.warn('ExecutionService', 'Failed to check jetton balance for recovery', positionId);
+                }
+            }
+
+            // NON-MOCK: Fetch actual on-chain balance
             const balanceNano = await getTonBalance(vaultAddrStr);
             const balance = Number(fromNano(balanceNano));
             
-            // Safety & Fee Calculation
-            // 1. Gas Buffer (Standard): 0.1 TON (kept for compute/storage)
-            // Fees Removed: No Entry Fee, No Exit Insurance.
-            const GAS_BUFFER = 0.1;
-            
+            const GAS_BUFFER = 0.5;
             const totalReserved = GAS_BUFFER;
 
             if (balance < totalReserved) {
@@ -95,43 +113,160 @@ export const ExecutionService = {
             }
             
             // The "Investable" amount is what remains after reserving buffer
-            const investableAmount = balance - totalReserved;
+            let investableAmount = balance - totalReserved;
+            
+            // Override with user specified capital if valid and within limits
+            if (position.capitalTON && position.capitalTON > 0) {
+                // If Recovery Mode: We only need funds for the Short Leg (50% of Capital) + Gas
+                // If Normal Mode: We need Full Capital + Gas
+                const localRequiredCapital = isSpotAcquired ? (position.capitalTON * 0.5) : position.capitalTON;
+                const requestedTotal = localRequiredCapital + totalReserved;
 
-            const spotAlloc = investableAmount * 0.5;
-            const marginAlloc = investableAmount * 0.5;
+                if (balance < requestedTotal) {
+                     // If balance is too low for requested, we can either fail or cap. 
+                     throw new Error(`Insufficient funds for requested ${localRequiredCapital} TON (Adj) + Gas. Have ${balance} TON.`);
+                }
+                
+                // IF we are in recovery, investableAmount should reflect the "Short Portion"
+                // IF we are normal, investableAmount is full capital
+                investableAmount = position.capitalTON;
+            }
 
-            const ticker = position.pairId.split('-')[0].toUpperCase();
+            // --- ENTRY FAIRNESS / AUTO-REFUND LOGIC ---
+            // If the remaining investment is negligible (< 0.5 TON), it's not worth entering.
+            // Refund the user immediately to avoid trapping funds.
+            // NOTE: In recovery mode, investableAmount might effectively be "The Short Amount", 
+            // so we check if that specific amount is viable.
+            const viableThreshold = 0.5;
+            
+            // If we are using "Full Capital" logic, we need to check the split.
+            // If we are "Remaining Balance", we check that.
+            
+            if (investableAmount < viableThreshold && !isSpotAcquired) { // Only refund if we haven't even started spot?
+                // actually if checking capitalTON, investableAmount might be huge (1.0), but if isSpotAcquired check is different...
+                // Simplify: Logic below handles allocation.
+            }
 
-            // 1. Swap 50% TON -> Spot
-            const buySpotTx = await stonfi.buildSwapTx({
-                 userWalletAddress: position.vaultAddress || position.user.walletAddress!,
-                 fromToken: 'TON', 
-                 toToken: ticker, 
-                 amount: spotAlloc.toFixed(2), 
-            });
+            // If investableAmount is too small relative to GAS/Fees, we abort/refund.
+            // But if we already have Spot, we shouldn't refund everything, we should probably fail or exit spot?
+            // For now, let's keep it simple: If we can't afford the Short, we fail (stuck), user can manual exit.
 
-            // 2. Open Short with remaining 50%
+            let spotAlloc = 0;
+            let marginAlloc = 0;
+
+            if (isSpotAcquired) {
+                 // Recovery:
+                 // If capitalTON was set, investableAmount == capitalTON (e.g. 1.0).
+                 // We want marginAlloc = 0.5 * 1.0 = 0.5.
+                 
+                 // If capitalTON NOT set, investableAmount == Balance - Gas (e.g. 0.51 - 0.5 = 0.01).
+                 // In this case, we use whatever is left for margin? 
+                 // Wait, if capitalTON is NOT set, investableAmount IS the remaining cash. 
+                 // So we should use ALL of it for margin.
+                 
+                 if (position.capitalTON && position.capitalTON > 0) {
+                     marginAlloc = investableAmount * 0.5;
+                 } else {
+                     marginAlloc = investableAmount;
+                 }
+                 
+                 spotAlloc = 0;
+                 Logger.info('ExecutionService', `Recovery Allocations: Spot=${spotAlloc}, Short=${marginAlloc}`, positionId);
+
+            } else {
+                 // Normal: 50/50 Split
+                 spotAlloc = investableAmount * 0.5;
+                 marginAlloc = investableAmount * 0.5;
+            }
+
+            // 1. Swap 50% TON -> Spot (StonFi) (Only if not acquired)
+            let buySpotTx;
+            const rawMessages: any[] = [];
+
+            if (!isSpotAcquired) {
+                buySpotTx = await stonfi.buildSwapTx({
+                     userWalletAddress: position.vaultAddress || position.user.walletAddress!,
+                     fromToken: 'TON', 
+                     toToken: ticker, 
+                     amount: spotAlloc.toFixed(2), 
+                     tokenAddress: position.tokenAddress || undefined 
+                });
+                
+                rawMessages.push({ 
+                    to: Address.parse(buySpotTx.to), 
+                    value: typeof buySpotTx.value === 'bigint' ? buySpotTx.value : BigInt(buySpotTx.value), 
+                    body: typeof buySpotTx.body === 'string' ? Cell.fromBase64(buySpotTx.body) : buySpotTx.body 
+                });
+            }
+
+
+            // 2. Open Short with allocated amount (Normal or Recovery)
             const openShortTx = await buildOpenPositionPayload({
                  vaultAddress: position.vaultAddress || position.user.walletAddress!, // Use actual vault
                  amount: marginAlloc.toFixed(2),
                  leverage: 1,
                  symbol: ticker
             });
+            
+            rawMessages.push({ 
+                 to: Address.parse(openShortTx.to), 
+                 value: BigInt(openShortTx.value), 
+                 body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined,
+                 init: openShortTx.init ? Cell.fromBase64(openShortTx.init) : undefined 
+            });
 
-             // 3. Wrap & Broadcast
-             const rawMessages = [
-                 { to: Address.parse(buySpotTx.to), value: typeof buySpotTx.value === 'bigint' ? buySpotTx.value : BigInt(buySpotTx.value), body: typeof buySpotTx.body === 'string' ? Cell.fromBase64(buySpotTx.body) : buySpotTx.body },
-                 { to: Address.parse(openShortTx.to), value: BigInt(openShortTx.value), body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined },
-                 // FEE REFUND: Vault -> Keeper (0.05 TON)
-                 {
-                    to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
-                    value: toNano('0.05'),
-                    body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Entry').endCell()
-                 }
-             ];
+            // LABEL & FEE REFUND
+            rawMessages.push({
+                to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
+                value: toNano('0.05'),
+                body: beginCell().storeUint(0, 32).storeStringTail(isSpotAcquired ? `Recovery: Short ${ticker}` : `Entry: Short ${ticker}`).endCell()
+            });
 
-             // REMOVED: Keeper Entry Fee / Top Up. User pays entry gas.
+            // 3. Stop Loss Logic (Max Loss)
+            // We check if we can bundle Stop Loss.
+            // Requirement for Short: Trigger when price INCREASES.
+            // Trigger = EntryPrice * (1 + MaxLoss%)
+            
+            const maxLoss = position.maxLossPercentage || 0.20; // Default 20%
+            try {
+                const currentPrice = await firstValueFrom(getMarkPrice$(position.pairId));
+                const stopLossPrice = currentPrice * (1 + maxLoss);
+                
+                const stormPosAddr = await getStormPositionAddress(vaultAddrStr, ticker);
+                const isPosDeployed = await checkContractDeployed(stormPosAddr);
 
+                if (isPosDeployed) {
+                     Logger.info('ExecutionService', `Position ${stormPosAddr} deployed. Bundling Stop Loss @ ${stopLossPrice}`, positionId);
+                     const slPayload = await buildStopLossPayload({
+                         positionAddress: stormPosAddr,
+                         triggerPrice: stopLossPrice.toFixed(4),
+                         symbol: ticker
+                     });
+                     
+                     rawMessages.push({
+                         to: Address.parse(slPayload.to),
+                         value: BigInt(slPayload.value),
+                         body: slPayload.body ? Cell.fromBase64(slPayload.body) : undefined 
+                     });
+                } else {
+                     Logger.warn('ExecutionService', `Storm Position ${stormPosAddr} NOT deployed. Cannot bundle Stop Loss atomically.`, positionId);
+                     // TODO: Queue a follow-up job to set SL once detected active?
+                }
+                
+                // Update DB with expected prices
+                 await prisma.position.update({ 
+                     where: { id: positionId }, 
+                     data: { 
+                         entryPrice: currentPrice,
+                         principalFloor: stopLossPrice 
+                     } 
+                 });
+
+            } catch (e) {
+                Logger.warn('ExecutionService', 'Failed to calculate/bundle Stop Loss', positionId, { error: (e as Error).message });
+            }
+
+             // 4. Wrap & Broadcast
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
              const wrappedCell = await wrapWithKeeperRequest(targetAddress, rawMessages);
 
@@ -222,10 +357,12 @@ export const ExecutionService = {
                 
                 // Step 1: Close Short
                 try {
+                    const { buildClosePositionPayload } = await import('./storm');
                     const closeShortTx = await buildClosePositionPayload({
                          vaultAddress: vaultOrWalletAddr,
                          positionId: position.id,
-                         symbol: ticker
+                         symbol: ticker,
+                         amount: position.perpAmount > 0 ? position.perpAmount.toString() : undefined // Use DB amount to force close
                     });
                     
                     if (closeShortTx) {
@@ -241,29 +378,34 @@ export const ExecutionService = {
 
                 // Step 2: Sell Spot
                 try {
-                    const quote = await swapcoffee.getQuote(
-                        ticker,
-                        'TON',
-                        toNano(position.spotAmount.toString()).toString()
-                    );
-                    const expectedOutput = quote.to_amount || '0';
-                    const minOut = (BigInt(expectedOutput) * BigInt(95)) / BigInt(100);
+                    const tokenAddr = position.tokenAddress || await stonfi.resolveTokenAddress(ticker);
+                    let realBalance = tokenAddr ? await stonfi.getJettonBalance(vaultOrWalletAddr, tokenAddr) : BigInt(0);
 
-                    const sellSpotTx = await swapcoffee.buildSwapTx({
-                         userWalletAddress: vaultOrWalletAddr,
-                         fromToken: ticker, 
-                         toToken: 'TON',
-                         amount: position.spotAmount.toString(),
-                         minOutput: minOut.toString()
-                    });
+                    // FALLBACK: If read returns 0, use DB amount (Blind Sell)
+                    if (realBalance === BigInt(0) && position.spotAmount > 0) {
+                         Logger.warn('ExecutionService', `[EXIT] Spot balance read 0, falling back to DB amount: ${position.spotAmount}`, positionId);
+                         realBalance = toNano(position.spotAmount.toFixed(9));
+                    }
 
-                    liquidationMessages.push({ 
-                        to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), 
-                        value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), 
-                        body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body 
-                    });
+                    if (realBalance > BigInt(0)) {
+                         Logger.info('ExecutionService', `[EXIT] Selling detected/fallback spot balance: ${fromNano(realBalance)}`, positionId);
+                         
+                         const sellSpotTx = await stonfi.buildSwapTx({
+                             userWalletAddress: vaultOrWalletAddr,
+                             fromToken: ticker, 
+                             toToken: 'TON',
+                             amount: fromNano(realBalance),
+                             tokenAddress: tokenAddr || undefined
+                         });
+    
+                        liquidationMessages.push({ 
+                            to: safeParseAddress(sellSpotTx.to, 'sellSpotTx.to'), 
+                            value: typeof sellSpotTx.value === 'bigint' ? sellSpotTx.value : BigInt(sellSpotTx.value), 
+                            body: typeof sellSpotTx.body === 'string' ? Cell.fromBase64(sellSpotTx.body) : sellSpotTx.body 
+                        });
+                    }
                 } catch (e) {
-                     Logger.warn('ExecutionService', `[EXIT] Could not build spot sell.`, positionId);
+                     Logger.warn('ExecutionService', `[EXIT] Could not build spot sell.`, positionId, { error: (e as Error).message });
                 }
             }
 
@@ -285,34 +427,15 @@ export const ExecutionService = {
             });
 
             // 3. Assemble
+            // 3. Assemble
+            // We only include the liquidation messages here.
+            // The actual "Sweep" (Transfer to User) must happen AFTER funds arrive in the Vault.
+            // This is handled by ExecutionService.monitorAndSweep via the Keeper.
             const rawMessages = [
-                // Refund Keeper for any outstanding (optional, maybe skip for user exit?)
-                // Actually, let's skip checking Keeper refund for user exit to maximize user return.
-                // The Keeper gets refunded per-action anyway.
-                
-                ...liquidationMessages,
-                
-                ...exitMessages.map((msg, index) => {
-                    return {
-                        to: msg.to,
-                        value: msg.value, // value is relevant for fee, but for user sweep we want mode 128 on last
-                        body: msg.body,
-                        mode: index === exitMessages.length - 1 ? 128 : 1 // 128 for last (sweep), 1 for fee (pay separate)
-                    };
-                })
+                 ...liquidationMessages
             ];
             
             // 4. Wrap with Owner Request (Internal Message)
-            // The User (Owner) signs this payload and sends it to the Vault.
-            // Opcode: 0x706c7573 ('plus')
-            
-            // Note: We do NOT include the keeper refund here directly because the User pays gas.
-            // If we want to revoke the keeper, we can add a removeExtension action, but 
-            // for a full exit (sweep), the account is effectively emptied. 
-            // Revocation is safer done via separate admin tool if needed, 
-            // or we could add it here if `wrapWithOwnerRequest` supported extension removal args.
-            // For now, let's just execute the sweep.
-
             const { wrapWithOwnerRequest } = await import('./w5-utils');
             const wrappedCell = await wrapWithOwnerRequest(rawMessages);
 
@@ -350,13 +473,14 @@ export const ExecutionService = {
              // 2. Build Spot Sell Payload (Liquidation to Cash)
              // We assume pairId format "ticker-ton" implies ticker is the spot asset.
              // e.g. "dogs-ton" -> Spot is DOGS. We swap DOGS -> TON.
-             const sellSpotTx = await swapcoffee.buildSwapTx({
+             const sellSpotTx = await stonfi.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: ticker, 
                  toToken: 'TON',
                  amount: position.spotAmount.toString(),
-                 minOutput: '1'
+                 tokenAddress: position.tokenAddress || undefined 
              });
+
 
              // 0. Safety Check
              const targetAddress = position.vaultAddress ? Address.parse(position.vaultAddress) : Address.parse(position.user.walletAddress!);
@@ -366,7 +490,7 @@ export const ExecutionService = {
             const keeperRefundMsg = {
                  to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
                  value: toNano('0.05'),
-                 body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Enter Stasis').endCell()
+                 body: beginCell().storeUint(0, 32).storeStringTail(`Stasis: Defensive Close ${ticker}`).endCell()
             };
 
              // 3. Wrap & Broadcast
@@ -416,13 +540,14 @@ export const ExecutionService = {
              const ticker = position.pairId.split('-')[0].toUpperCase();
              const amountToSwap = position.spotValue || 100; 
              
-             const buySpotTx = await swapcoffee.buildSwapTx({
+             const buySpotTx = await stonfi.buildSwapTx({
                  userWalletAddress: position.vaultAddress || position.user.walletAddress!,
                  fromToken: 'TON',
                  toToken: ticker, 
-                 amount: toNano(amountToSwap.toString()).toString(), 
-                 minOutput: '1' 
+                 amount: amountToSwap.toString(), 
+                 tokenAddress: position.tokenAddress || undefined
              });
+
 
              const amountForMargin = position.perpValue || 100;
              const openShortTx = await buildOpenPositionPayload({
@@ -438,7 +563,7 @@ export const ExecutionService = {
              const keeperRefundMsg = {
                   to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
                   value: toNano('0.05'),
-                  body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Exit Stasis').endCell()
+                  body: beginCell().storeUint(0, 32).storeStringTail(`Stasis: Exit to Active ${ticker}`).endCell()
              };
 
              messages.push(
@@ -500,7 +625,7 @@ export const ExecutionService = {
             const keeperRefundMsg = {
                 to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
                 value: toNano('0.05'),
-                body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Rebalance').endCell()
+                body: beginCell().storeUint(0, 32).storeStringTail(`Rebalance: ${amount.toFixed(2)} TON`).endCell()
             };
 
             // 2. Wrap & Broadcast
@@ -587,7 +712,7 @@ export const ExecutionService = {
              const keeperRefundMsg = {
                   to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
                   value: toNano('0.05'),
-                  body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Delta Rebalance').endCell()
+                  body: beginCell().storeUint(0, 32).storeStringTail(`Delta Rebalance: ${delta.toFixed(4)}`).endCell()
              };
 
              rawMessages.unshift(keeperRefundMsg);
@@ -644,15 +769,22 @@ export const ExecutionService = {
                 const targetAddress = Address.parse(vaultAddress);
                 const userAddress = Address.parse(userWalletAddress);
                 
-                 // Build Sweep Payload (Mode 128 to User)
+                // 1. Refund Keeper (0.4 TON) - Recovers the 0.5 TON funding minus gas
+                const keeperRefundMsg = {
+                    to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
+                    value: toNano('0.4'),
+                    body: beginCell().storeUint(0, 32).storeStringTail('Refund: Keeper Funding').endCell()
+                };
+
+                 // 2. Sweep Remaining to User (Mode 128)
                  const sweepMsg = {
                     to: userAddress,
-                    value: BigInt(0), 
+                    value: BigInt(0),
                     mode: 128, // CARRY_ALL_REMAINING_BALANCE
                     body: beginCell().storeUint(0, 32).storeStringTail('Pamelo: Position Closed').endCell()
                 };
 
-                 const wrappedCell = await wrapWithKeeperRequest(targetAddress, [sweepMsg]);
+                 const wrappedCell = await wrapWithKeeperRequest(targetAddress, [keeperRefundMsg, sweepMsg]);
 
                  const txs = [{
                     address: targetAddress.toString(),
@@ -678,24 +810,17 @@ export const ExecutionService = {
 
                     Logger.info('ExecutionService', `Monitor Pulse: ${balanceTON} TON`, positionId, { retry: i });
 
-                    // Case A: Funds Arrived (e.g. > 0.25 TON) -> Trigger Sweep
-                    if (balanceTON > 0.25 && !fundsSwept) {
+                    // Case A: Funds Arrived (e.g. > 0.05 TON) -> Trigger Sweep
+                    // We allow multiple sweeps to handle sequential arrivals (Gas Reserve -> Swap Return)
+                    if (balanceTON > 0.05) {
                         fundsDetected = true;
                         await sweepFunds();
-                        // Don't return yet, wait for balance to drop to confirm
                     }
 
-                    // Case B: Safe/Empty State (e.g. < 0.25 TON) -> Confirm Close
-                    // We check if we either just swept OR if we are just verifying a clean state
-                    if (balanceTON < 0.25) {
-                         // If we saw funds and now they are gone, OR if we never saw large funds but time passed (maybe user swept manually?)
-                         // Actually, if we never saw funds, we might be waiting for them to arrive. 
-                         // But if 10 mins pass and no funds, we eventually timeout.
-                         
-                         // Determine if we should close.
-                         // If we triggered a sweep, we definitely close.
-                         // If the balance is already effectively zero and we didn't sweep, maybe the user did.
-                         if (fundsSwept || i > 5) {
+                    // Case B: Safe/Empty State -> Confirm Close
+                    // If balance is low (< 0.05) AND we have swept at least once.
+                    if (balanceTON < 0.05) {
+                         if (fundsDetected || i > 10) { // Wait at least 100s if no funds seen, or exit if swept.
                              Logger.info('ExecutionService', 'VAULT_EMPTY_CONFIRMED. Closing Position.', positionId);
                              
                              await prisma.position.update({
@@ -736,8 +861,8 @@ export const ExecutionService = {
             const vaultAddrStr = vaultAddress;
             const ticker = position.pairId.split('-')[0].toUpperCase();
 
-            // 1. Close Positions (if Active)
-            if (position.status === 'active' || position.status === 'stasis_active' || position.status === 'processing_exit' || position.status === 'exit_monitoring') {
+            // 1. Close Positions (if Active or Pending)
+            if (['active', 'stasis_active', 'processing_exit', 'exit_monitoring', 'pending_entry', 'pending_entry_verification'].includes(position.status)) {
                 Logger.info('ExecutionService', `Position Active/Processing. Generating Close/Sell payloads for ${ticker}...`, positionId);
 
                 // Close Short
@@ -746,7 +871,8 @@ export const ExecutionService = {
                     const closeShortTx = await buildClosePositionPayload({
                         vaultAddress: vaultAddrStr,
                         positionId: position.id,
-                        symbol: ticker
+                        symbol: ticker,
+                        amount: position.perpAmount > 0 ? position.perpAmount.toString() : undefined // Use DB amount to force close
                     });
                     if (closeShortTx) {
                          messages.push({
@@ -761,16 +887,24 @@ export const ExecutionService = {
 
                 // Sell Spot
                 try {
-                    if (position.spotAmount > 0) {
-                        const quote = await swapcoffee.getQuote(ticker, 'TON', toNano(position.spotAmount.toString()).toString());
-                        const minOut = (BigInt(quote.to_amount) * BigInt(95)) / BigInt(100);
+                    const tokenAddr = position.tokenAddress || await stonfi.resolveTokenAddress(ticker);
+                    let realBalance = tokenAddr ? await stonfi.getJettonBalance(vaultAddrStr, tokenAddr) : BigInt(0);
 
-                        const sellSpotTx = await swapcoffee.buildSwapTx({
+                    // FALLBACK: If read returns 0, use DB amount (Blind Sell)
+                    if (realBalance === BigInt(0) && position.spotAmount > 0) {
+                         Logger.warn('ExecutionService', `[FORCE_EXIT] Spot balance read 0, falling back to DB amount: ${position.spotAmount}`, positionId);
+                         realBalance = toNano(position.spotAmount.toFixed(9));
+                    }
+
+                    if (realBalance > BigInt(0)) {
+                        Logger.info('ExecutionService', `[FORCE_EXIT] Selling detected/fallback spot balance: ${fromNano(realBalance)}`, positionId);
+
+                        const sellSpotTx = await stonfi.buildSwapTx({
                             userWalletAddress: vaultAddrStr,
                             fromToken: ticker,
                             toToken: 'TON',
-                            amount: position.spotAmount.toString(),
-                            minOutput: minOut.toString()
+                            amount: fromNano(realBalance),
+                            tokenAddress: tokenAddr || undefined
                         });
 
                         messages.push({
@@ -780,26 +914,28 @@ export const ExecutionService = {
                         });
                     }
                 } catch (e) {
-                     Logger.warn('ExecutionService', `[FORCE_EXIT] Could not build spot sell.`, positionId);
+                     Logger.error('ExecutionService', `[FORCE_EXIT] Could not build spot sell.`, positionId, { 
+                         error: (e as Error).message,
+                         stack: (e as Error).stack 
+                     });
                 }
             }
 
-            // 2. Refund 0.05 TON to Keeper (Gas Cost) - Before Status Check? No, always.
-            // This ensures Keeper is refunded for the gas it spent triggering this.
-            // For User Exits, Keeper gets +0.05 (User), spends 0.05 (Vault), gets +0.05 (Vault), Refunds User 0.03.
-            // Net = 0.02.
+            // 2. Refund 0.05 TON to Keeper (Gas Cost) & Label
             messages.push({
                 to: Address.parse(process.env.NEXT_PUBLIC_KEEPER_ADDRESS!),
                 value: toNano('0.05'),
-                body: beginCell().storeUint(0, 32).storeStringTail('Fee Refund: Exit').endCell()
+                body: beginCell().storeUint(0, 32).storeStringTail(`Exit: Close ${ticker}`).endCell()
             });
 
-            // 3. Add User Sweep (Carry all remaining)
-            messages.push({
-                to: Address.parse(userWalletAddress),
-                value: BigInt(0),
-                body: beginCell().storeUint(0, 32).storeStringTail('Pamelo: Automated Refund').endCell(),
-                mode: 128
+            // DEBUG: Log messages before wrapping
+            Logger.info('ExecutionService', `[FORCE_EXIT] Preparing ${messages.length} messages for broadcast`, positionId, {
+                messageDetails: messages.map((m, i) => ({
+                    index: i,
+                    to: m.to.toString(),
+                    value: m.value.toString(),
+                    hasBody: !!m.body
+                }))
             });
 
             // 3. Wrap & Send
@@ -808,7 +944,7 @@ export const ExecutionService = {
 
             const txs = [{
                 address: targetAddress.toString(),
-                value: '50000000', // Use the 0.05 TON provided by the user
+                value: '500000000', // 0.5 TON to fund vault (Increased for safety)
                 cell: wrappedCell.toBoc().toString('base64')
             },
             // FEE REFUND: Keeper sends 0.03 TON back to user (User paid 0.05, Fee is 0.02)
@@ -819,15 +955,82 @@ export const ExecutionService = {
             }];
 
             const result = await firstValueFrom(sendTransactions$(txs));
-            Logger.info('ExecutionService', 'FORCE_EXIT_BROADCASTED', positionId, { seqno: result.seqno });
+            
+            Logger.info('ExecutionService', 'FORCE_LIQUIDATION_BROADCASTED', positionId, { seqno: result.seqno });
 
-            // 4. Fire monitor to confirm closure in DB
-            await ExecutionService.monitorAndSweep(position.id, vaultAddrStr, userWalletAddress);
+            // 4. Start Monitoring for Funds Arriving
+            ExecutionService.monitorAndSweep(position.id, vaultAddrStr, userWalletAddress).catch(e => {
+                Logger.error('ExecutionService', 'MONITOR_START_FAILED', positionId, { error: String(e) });
+            });
 
         } catch (error: unknown) {
              const err = error instanceof Error ? error : new Error(String(error));
              Logger.error('ExecutionService', 'FORCE_VAULT_EXIT_FAILED', positionId, { error: err.message });
              throw err;
+        }
+    },
+
+    /**
+     * Ensures a Stop Loss is attached to the position.
+     * Called when a position transitions from Pending -> Active.
+     */
+    ensureStopLoss: async (positionId: string) => {
+        Logger.info('ExecutionService', 'Ensuring Stop Loss...', positionId);
+        try {
+            const position = await prisma.position.findUnique({ where: { id: positionId }, include: { user: true } });
+            if (!position) return;
+
+            const ticker = position.pairId.split('-')[0].toUpperCase();
+            const vaultAddrStr = position.vaultAddress || position.user.walletAddress!;
+            
+            // 1. Calculate Trigger
+            const { getMarkPrice$ } = await import('./storm');
+            const maxLoss = position.maxLossPercentage || 0.20;
+            const currentPrice = await firstValueFrom(getMarkPrice$(position.pairId));
+            const stopLossPrice = currentPrice * (1 + maxLoss);
+            
+            // 2. Build Payload
+            const { getStormPositionAddress, buildStopLossPayload } = await import('./storm');
+            const { checkContractDeployed, wrapWithKeeperRequest } = await import('./w5-utils');
+            
+            const stormPosAddr = await getStormPositionAddress(vaultAddrStr, ticker);
+            const isPosDeployed = await checkContractDeployed(stormPosAddr);
+
+            if (!isPosDeployed) {
+                Logger.warn('ExecutionService', `[ensureStopLoss] Position ${stormPosAddr} still NOT deployed.`, positionId);
+                return; 
+            }
+
+            const slPayload = await buildStopLossPayload({
+                 positionAddress: stormPosAddr,
+                 triggerPrice: stopLossPrice.toFixed(4),
+                 symbol: ticker
+            });
+
+            // 3. Send
+            const targetAddress = Address.parse(vaultAddrStr);
+            const wrappedCell = await wrapWithKeeperRequest(targetAddress, [{
+                 to: Address.parse(slPayload.to),
+                 value: BigInt(slPayload.value),
+                 body: slPayload.body ? Cell.fromBase64(slPayload.body) : undefined 
+            }]);
+
+            // Dynamically import sendTransactions$ to reuse Keeper logic
+            const { sendTransactions$ } = await import('./custodialWallet'); 
+
+            await firstValueFrom(sendTransactions$([{
+                address: targetAddress.toString(),
+                value: '50000000', // 0.05 TON
+                cell: wrappedCell.toBoc().toString('base64')
+            }]));
+            
+             Logger.info('ExecutionService', 'STOP_LOSS_ATTACHED', positionId, { trigger: stopLossPrice });
+
+             // Update DB
+             await prisma.position.update({ where: { id: positionId }, data: { principalFloor: stopLossPrice }});
+
+        } catch (e) {
+             Logger.error('ExecutionService', 'ENSURE_SL_FAILED', positionId, { error: String(e) });
         }
     }
 };
