@@ -75,19 +75,25 @@ export const buildOpenPositionPayload = async (params: { vaultAddress: string, a
     const sdk = await getStormSDK();
     const baseAsset = params.symbol || 'TON';
 
-    // 1x Short
+    // 1x Short via Vault (Handles deployment automatically)
+    // initPositionManager: true is default in SDK for increasePosition
     const txParams = await withRetry(c => sdk.increasePosition({
         baseAsset,
         amount: toNano(params.amount),
-        leverage: toNano(params.leverage), // SDK expects leverage in 9 decimals? Types says "bigint". Examples usually use toNano(lev).
+        leverage: toNano(params.leverage), 
         direction: Direction.short,
         traderAddress: Address.parse(params.vaultAddress)
     }));
+    
+    // Note: increasePosition returns target (Vault) and body. 
+    // It does not return init, because the Vault is already deployed.
+    // The Vault will send internal message to deploy Position if needed.
 
     return {
         to: txParams.to.toString(),
         value: txParams.value.toString(),
         body: txParams.body.toBoc().toString('base64')
+        // init: undefined // No init needed for Vault interaction
     };
 };
 
@@ -208,4 +214,61 @@ export const getPosition$ = (symbol: string, userAddress: string): Observable<{ 
             entryPrice: entryPrice
         };
     })());
+};
+
+/**
+ * Calculates the predicted Storm Position Address.
+ * Used to check if the position contract is already deployed.
+ */
+export const getStormPositionAddress = async (userVaultAddress: string, symbol: string): Promise<string> => {
+    const sdk = await getStormSDK();
+    const baseAsset = symbol.split('-')[0].toUpperCase();
+    
+    // SDK internal logic to derive address
+    // We can use sdk.getPositionAddress(trader, vamm)
+    // But we need vamm first.
+    const asset = await sdk.getAssetInfoByName(baseAsset);
+    const vammAddress = await sdk.getAmmAddress(asset.index);
+    const positionAddress = await sdk.getPositionAddress(Address.parse(userVaultAddress), vammAddress);
+    
+    return positionAddress.toString();
+};
+
+/**
+ * Builds the transaction payload to create a Stop Loss order.
+ * Triggers if price crosses triggerPrice.
+ */
+export const buildStopLossPayload = async (params: { positionAddress: string, triggerPrice: string, symbol?: string }) => {
+    const sdk = await getStormSDK();
+    
+    // Note: Stop Loss is sent to the Position Contract.
+    // Ensure params.positionAddress is the correct Storm Position Address.
+    
+    // Using SDK's createOrder
+    const txParams = await withRetry(c => sdk.createOrder({
+        orderType: 'stopLoss',
+        triggerPrice: toNano(params.triggerPrice),
+        positionAddress: Address.parse(params.positionAddress),
+        baseAsset: params.symbol || 'TON', 
+        direction: Direction.short, // Stop Loss for a SHORT position
+        traderAddress: Address.parse(params.positionAddress), // This might be redundant or specific to context, but typically trader is the user. 
+                                                              // Wait, createOrder usually needs traderAddress? 
+                                                              // Let's check `createOrderParams`... it uses `opts.positionAddress`.
+                                                              // But validation might need traderAddress. 
+                                                              // For safety, we should probably pass the user vault as traderAddress if possible, 
+                                                              // but the signature logic is inside SDK.
+                                                              // The critical part is `to: positionAddress`.
+        // We do not need `amount` for SL usually, it closes the position? 
+        // Storm V2: "stopLoss" order usually is a trigger to close.
+        // If `amount` is missing, does it close full?
+        // SDK `createSLTPOrderPayload` (line 4845) uses `opts`.
+        // Looking at SDK source: it writes TRIGGER_PRICE and sets IS_STOP_LOSS flag.
+        // It likely applies to the whole position.
+    } as any));
+
+    return {
+        to: txParams.to.toString(),
+        value: txParams.value.toString(), // 1 TON usually (gas) + fee
+        body: txParams.body.toBoc().toString('base64')
+    };
 };

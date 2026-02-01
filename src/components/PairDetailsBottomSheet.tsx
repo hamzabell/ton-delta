@@ -82,9 +82,12 @@ export default function PairDetailsBottomSheet({
         const vaultAddressStr = vault.address.toString();
 
         // 3. Send Transaction
+        // User sends EXACTLY what they want to invest + GAS_BUFFER (0.3 TON)
+        // The GAS_BUFFER covers deployment + transaction fees
+        const totalRequired = stakeAmount + 0.5; // Investment + Gas Buffer (0.5 for entry execution)
         const messages = [{
             address: vaultAddressStr,
-            amount: toNano((stakeAmount + 0.1).toFixed(9)).toString(),
+            amount: toNano(totalRequired.toFixed(9)).toString(),
             stateInit: vault.stateInit.toBoc().toString("base64"),
             payload: undefined
         }];
@@ -225,9 +228,27 @@ export default function PairDetailsBottomSheet({
                           {isBalanceLoading ? 'Loading...' : `Balance: ${isConnected ? balance.toFixed(2) : '0.00'} TON`}
                         </p>
                      </div>
-                </div>
-                
-                {/* Minimalist Config Toggle */}
+                 </div>
+                 
+                 {/* Cost Breakdown */}
+                 {amount && parseFloat(amount) > 0 && (
+                     <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 space-y-2">
+                         <div className="flex justify-between items-center text-xs">
+                             <span className="text-white/60 font-bold uppercase tracking-wider">Investment</span>
+                             <span className="text-white font-black">{parseFloat(amount).toFixed(2)} TON</span>
+                         </div>
+                         <div className="flex justify-between items-center text-xs">
+                             <span className="text-white/60 font-bold uppercase tracking-wider">Gas Buffer</span>
+                              <span className="text-blue-400 font-black">+0.50 TON</span>
+                         </div>
+                         <div className="border-t border-white/10 pt-2 flex justify-between items-center">
+                             <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total Cost</span>
+                             <span className="text-lg font-black text-[#E2FF00]">{(parseFloat(amount) + 0.5).toFixed(2)} TON</span>
+                         </div>
+                     </div>
+                 )}
+                 
+                 {/* Minimalist Config Toggle */}
                 <button 
                     onClick={() => setShowConfig(!showConfig)}
                     className="w-full flex items-center justify-between px-2 group"

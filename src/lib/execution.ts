@@ -89,6 +89,7 @@ export const ExecutionService = {
             if (ticker !== 'TON') {
                 try {
                      const tokenAddress = position.tokenAddress || await stonfi.resolveTokenAddress(ticker);
+                     if (!tokenAddress) throw new Error("Token address not found");
                      const jettonBal = await stonfi.getJettonBalance(vaultAddrStr, tokenAddress);
                      const jettonAmount = Number(fromNano(jettonBal));
                      
@@ -211,8 +212,7 @@ export const ExecutionService = {
             rawMessages.push({ 
                  to: Address.parse(openShortTx.to), 
                  value: BigInt(openShortTx.value), 
-                 body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined,
-                 init: openShortTx.init ? Cell.fromBase64(openShortTx.init) : undefined 
+                 body: openShortTx.body ? Cell.fromBase64(openShortTx.body) : undefined
             });
 
             // LABEL & FEE REFUND

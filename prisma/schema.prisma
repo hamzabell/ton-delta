@@ -71,6 +71,9 @@ model Position {
   
   // Vault Architecture
   vaultAddress    String   // The unique W5 Contract Address holding this position's funds
+  tokenAddress    String?  // The address of the token (e.g. Jetton Master) for this pair
+  
+  capitalTON      Float?   // The intended investment amount (if specified by user)
 
   // Capital tracking
   spotAmount      Float    // Quantity of spot tokens
@@ -152,4 +155,41 @@ model AuditLog {
   @@index([level])
   @@index([component])
   @@index([positionId])
+}
+
+model Job {
+  id            String    @id @default(uuid())
+  name          String    // Job type: 'drift-monitor', 'safety-check', etc.
+  payload       Json?     @db.JsonB // Job data as JSON
+  status        String    @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  priority      Int       @default(0)
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  error         String?   @db.Text
+  
+  // Scheduling
+  scheduledFor  DateTime  @default(now())
+  processedAt   DateTime?
+  completedAt   DateTime?
+  
+  // Recurring jobs
+  recurring     Boolean   @default(false)
+  cronPattern   String?   // Cron pattern for recurring jobs
+  lastRun       DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([status, scheduledFor])
+  @@index([name, status])
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  ticker    String   // 'TON', 'DOGE', etc.
+  price     Float
+  timestamp DateTime @default(now())
+  
+  @@index([ticker, timestamp])
+  @@index([timestamp]) // For cleanup queries
 }

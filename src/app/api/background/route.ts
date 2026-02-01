@@ -1,83 +1,57 @@
 import { NextResponse } from 'next/server';
-import { watchmanQueue } from '@/workers/queues';
+import { scheduleRecurringJob } from '@/lib/pg-queue';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Background Service Scheduler
- * Initializes recurring jobs for all worker tasks
+ * Initializes recurring jobs for all worker tasks using PostgreSQL queue
  */
 export async function GET() {
   try {
     // Schedule Entry Job - Processes pending position entries
-    await watchmanQueue.add(
+    await scheduleRecurringJob(
       'entry-job',
       {},
-      {
-        repeat: {
-          pattern: '*/30 * * * * *', // Every 30 seconds
-        },
-        jobId: 'entry-job-recurring',
-      }
+      '*/30 * * * * *' // Every 30 seconds
     );
 
     // Schedule Valuation Job - Updates position valuations
-    await watchmanQueue.add(
+    await scheduleRecurringJob(
       'valuation-job',
       {},
-      {
-        repeat: {
-          pattern: '*/60 * * * * *', // Every 60 seconds
-        },
-        jobId: 'valuation-job-recurring',
-      }
+      '*/60 * * * * *' // Every 60 seconds
     );
 
     // Schedule Drift Monitor - Monitors delta drift
-    await watchmanQueue.add(
+    await scheduleRecurringJob(
       'drift-monitor',
       {},
-      {
-        repeat: {
-          pattern: '*/120 * * * * *', // Every 2 minutes
-        },
-        jobId: 'drift-monitor-recurring',
-      }
+      '*/120 * * * * *' // Every 2 minutes
     );
 
     // Schedule Safety Check - Monitors max loss thresholds
-    await watchmanQueue.add(
+    await scheduleRecurringJob(
       'safety-check',
       {},
-      {
-        repeat: {
-          pattern: '*/60 * * * * *', // Every 60 seconds
-        },
-        jobId: 'safety-check-recurring',
-      }
+      '*/60 * * * * *' // Every 60 seconds
     );
 
     // Schedule Keeper Monitor - Detects refund trigger payments
-    await watchmanQueue.add(
+    await scheduleRecurringJob(
       'keeper-monitor',
       {},
-      {
-        repeat: {
-          pattern: '*/30 * * * * *', // Every 30 seconds
-        },
-        jobId: 'keeper-monitor-recurring',
-      }
+      '*/30 * * * * *' // Every 30 seconds
     );
 
     return NextResponse.json({
       success: true,
-      message: 'Background service initialized',
+      message: 'Background service initialized with PostgreSQL queue',
       jobs: [
         { name: 'entry-job', interval: '30s' },
         { name: 'valuation-job', interval: '60s' },
         { name: 'drift-monitor', interval: '120s' },
         { name: 'safety-check', interval: '60s' },
-        { name: 'strategy-job', interval: '180s' },
         { name: 'keeper-monitor', interval: '30s' },
       ],
     });

@@ -1,5 +1,5 @@
 
-import { Address, beginCell, Cell, SendMode, toNano, Sender, internal } from "@ton/core";
+import { Address, beginCell, Cell, SendMode, toNano, Sender, internal, loadStateInit } from "@ton/core";
 import { WalletContractV5R1 } from "@ton/ton/dist/wallets/v5r1/WalletContractV5R1";
 import { OutActionWalletV5 } from "@ton/ton/dist/wallets/v5beta/WalletV5OutActions";
 import { storeOutListExtendedV5R1 } from "@ton/ton/dist/wallets/v5r1/WalletV5R1Actions";
@@ -51,7 +51,7 @@ export async function buildRemoveExtensionBody(
  */
 export async function wrapWithKeeperRequest(
   userAddress: Address,
-  messages: { to: Address, value: bigint, body?: Cell, mode?: number }[],
+  messages: { to: Address, value: bigint, body?: Cell, mode?: number, init?: Cell | null }[],
   removeExtensionAddr?: Address
 ): Promise<Cell> {
     const actions: OutActionWalletV5[] = messages.map(msg => ({
@@ -60,7 +60,8 @@ export async function wrapWithKeeperRequest(
         outMsg: internal({
             to: msg.to,
             value: msg.value,
-            body: msg.body || new Cell()
+            body: msg.body || new Cell(),
+            init: msg.init ? loadStateInit(msg.init.beginParse()) : undefined
         })
     }));
 
@@ -128,7 +129,7 @@ export async function buildKeeperRequest(
  * Opcode: 0x706c7573 ('plus')
  */
 export async function wrapWithOwnerRequest(
-    messages: { to: Address, value: bigint, body?: Cell, mode?: number }[]
+    messages: { to: Address, value: bigint, body?: Cell, mode?: number, init?: Cell | null }[]
 ): Promise<Cell> {
     const actions: OutActionWalletV5[] = messages.map(msg => ({
         type: 'sendMsg',
@@ -136,7 +137,8 @@ export async function wrapWithOwnerRequest(
         outMsg: internal({
             to: msg.to,
             value: msg.value,
-            body: msg.body || new Cell()
+            body: msg.body || new Cell(),
+            init: msg.init ? loadStateInit(msg.init.beginParse()) : undefined
         })
     }));
 

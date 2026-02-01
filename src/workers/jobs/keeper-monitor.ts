@@ -1,4 +1,10 @@
-import { Job } from 'bullmq';
+// Job type removed - using generic job interface
+
+interface Job {
+  id: string;
+  name: string;
+  data: Record<string, any>;
+}
 import { prisma } from '../../lib/prisma';
 import { getTonClient, withRetry } from '../../lib/onChain';
 import { Address, fromNano } from '@ton/core';

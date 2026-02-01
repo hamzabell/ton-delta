@@ -100,11 +100,9 @@ export default function PositionDetailsBottomSheet({
                      <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Entry in Progress</p>
                      <p className="text-[10px] text-blue-400/80 mt-0.5">We are verifying your spot and short trades on-chain.</p>
                  </div>
-                 {position.entryTxHash && !position.entryTxHash.startsWith('entry_seq_') && (
-                     <a href={`https://tonviewer.com/transaction/${position.entryTxHash}`} target="_blank" rel="noreferrer" className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors">
-                        <ExternalLink className="w-4 h-4 text-blue-400" />
-                     </a>
-                 )}
+                 <a href={`https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer" className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors group">
+                    <ExternalLink className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
+                 </a>
              </div>
           )}
 
@@ -169,19 +167,33 @@ export default function PositionDetailsBottomSheet({
             </div>
             
             <div className="grid grid-cols-2 gap-3">
-                 <a href={position.spotTxHash ? `https://tonviewer.com/transaction/${position.spotTxHash}` : `https://swap.coffee/dex?pair=${ticker}_TON`} target="_blank" rel="noreferrer" 
-                    className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+                 <a href={position.spotTxHash ? `https://tonviewer.com/transaction/${position.spotTxHash}` : `https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer" 
+                    className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-blue-400 uppercase tracking-widest flex items-center gap-2">
                          Spot <ExternalLink className="w-3 h-3" />
                      </span>
+                     <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                        Swap.Coffee
+                     </span>
                  </a>
-                 <a href={position.stormTxHash ? `https://tonviewer.com/transaction/${position.stormTxHash}` : `https://storm.trade/ton/futures/${ticker}-TON`} target="_blank" rel="noreferrer" 
-                    className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+
+                 <a href={position.stormTxHash ? `https://tonviewer.com/transaction/${position.stormTxHash}` : `https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer" 
+                    className="px-5 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors group">
                      <span className="text-[10px] font-bold text-white/40 group-hover:text-purple-400 uppercase tracking-widest flex items-center gap-2">
                          Short <ExternalLink className="w-3 h-3" />
                      </span>
+                     <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                        Storm Trade
+                     </span>
                  </a>
             </div>
+            
+            <a href={`https://tonviewer.com/${position.vaultAddress || position.user?.walletAddress}`} target="_blank" rel="noreferrer"
+               className="w-full px-5 py-3 border border-white/5 bg-white/[0.02] rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors group mt-3">
+                <span className="text-[9px] font-bold text-white/20 group-hover:text-white/40 uppercase tracking-widest flex items-center gap-2">
+                    View Verified Vault <ExternalLink className="w-3 h-3" />
+                </span>
+            </a>
 
 
             {position.status === 'stasis_active' && (

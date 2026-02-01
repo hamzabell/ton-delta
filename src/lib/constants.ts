@@ -6,7 +6,7 @@ export const API_CONFIG = {
     rpcUrl: CURRENT_NETWORK.tonApi,
   },
   swapCoffee: {
-    baseUrl: 'https://api.swap.coffee/api/v1',
+    baseUrl: 'https://backend.swap.coffee/v1',
   },
   ton: {
     rpcUrl: CURRENT_NETWORK.tonApi,

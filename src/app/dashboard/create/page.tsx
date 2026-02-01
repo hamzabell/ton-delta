@@ -90,10 +90,13 @@ export default function CreateCustomTradePage() {
         // 2. Construct Deployment Message
         // We send 0.1 TON to deploy the vault and provide initial gas.
         // The stateInit ensures the vault is deployed with the keeper extension already registered.
+        const investmentAmount = formData.amount[0];
+        const totalRequired = investmentAmount + 0.5;
+        
         const messages = [
             {
                 address: vaultAddress.toString(),
-                amount: toNano("0.1").toString(), 
+                amount: toNano(totalRequired).toString(), 
                 stateInit: stateInit.toBoc().toString("base64")
             }
         ];
@@ -295,6 +298,45 @@ export default function CreateCustomTradePage() {
                        <span>Loose</span>
                    </div>
               </div>
+
+              {/* Cost Breakdown */}
+              {formData.amount[0] > 0 && (
+                  <div className="space-y-3">
+                      {/* Main Cost Box */}
+                      <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-5 space-y-2.5">
+                          <div className="flex justify-between items-center text-sm">
+                              <span className="text-white/60 font-bold uppercase tracking-wider">Investment</span>
+                              <span className="text-white font-black">{formData.amount[0].toFixed(2)} TON</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                              <span className="text-white/60 font-bold uppercase tracking-wider">Gas Buffer</span>
+                              <span className="text-blue-400 font-black">+0.50 TON</span>
+                          </div>
+                          <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                              <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Total Cost</span>
+                              <span className="text-2xl font-black text-[#E2FF00]">{(formData.amount[0] + 0.5).toFixed(2)} TON</span>
+                          </div>
+                      </div>
+                      
+                      {/* Gas Requirement Warning */}
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
+                          <div className="flex gap-3">
+                              <div className="flex-shrink-0">
+                                  <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                              </div>
+                              <div className="flex-1">
+                                  <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Gas Requirements Covered</p>
+                                  <p className="text-xs text-white/70 leading-relaxed">
+                                      The 0.5 TON gas buffer covers transaction fees for entry execution (spot swap + short opening). 
+                                      If entry fails due to insufficient gas, you can always trigger a refund to recover your funds.
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              )}
 
               {/* Submit Button */}
               <div className="pt-2">

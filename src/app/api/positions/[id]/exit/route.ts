@@ -37,6 +37,16 @@ export async function POST(
 
     await Logger.info('API', 'POSITION_EXIT_PAYLOAD_GENERATED', positionId);
 
+    // TRIGGER MONITORING
+    // The user will sign the liquidation payload. 
+    // We must monitor for the funds to arrive (from Storm/SwapCoffee) and then sweep them to the user.
+    // Note: In serverless, this might be cut off, but we attempt to start it.
+    ExecutionService.monitorAndSweep(
+        position.id, 
+        position.vaultAddress || position.user.walletAddress!, 
+        position.user.walletAddress || position.userId
+    ).catch(e => console.error("Failed to start monitor", e));
+
     // OPTIMISTIC UPDATE REMOVED:
     // We do NOT update to 'processing_exit' yet. 
     // The Frontend will show a loading state, and the STATUS will change 

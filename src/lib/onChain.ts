@@ -1,7 +1,7 @@
 import { TonClient } from '@ton/ton';
 import { Address, beginCell } from '@ton/core';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
-import { CURRENT_NETWORK } from './config'; // Adjust path if needed
+import { IS_TESTNET } from './config'; // Adjust path if needed
 
 let client: TonClient | null = null;
 let clientEndpoint: string | null = null;
@@ -13,14 +13,12 @@ const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 export const getTonClient = async (forceNew = false) => {
     if (client && !forceNew) return client;
     
-    // Attempt with TonCenter first (high stability)
-    const endpoint = 'https://toncenter.com/api/v2/jsonRPC';
+    // Use Orbs TON Access for better reliability/rate-limits
+    if (!clientEndpoint || forceNew) {
+        clientEndpoint = await getHttpEndpoint({ network: IS_TESTNET ? 'testnet' : 'mainnet' });
+    }
     
-    // Fallback to config or ton-access if explicitly desired? 
-    // For now, let's force a stable one for the emergency refund.
-    
-    clientEndpoint = endpoint;
-    client = new TonClient({ endpoint });
+    client = new TonClient({ endpoint: clientEndpoint });
     return client;
 };
 

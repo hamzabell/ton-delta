@@ -5,35 +5,20 @@ import { IS_TESTNET } from '@/lib/config';
 const STONFI_ASSETS_API = 'https://api.ston.fi/v1/assets';
 
 // Fetch authoritative assets from Ston.fi (TON Native)
-async function fetchStonFiAssets(): Promise<Record<string, string>> {
+    // Fetches full asset objects to get address
+    async function fetchStonFiAssets(): Promise<any[]> {
     try {
         const res = await fetch(STONFI_ASSETS_API, { 
             next: { revalidate: 3600 } // Cache for 1 hour
         });
-        if (!res.ok) return {};
+        if (!res.ok) return [];
         const data = await res.json();
-        const iconMap: Record<string, string> = {};
         
         // Sort by priority desc to ensure we get the "official" token first
-        const assets = (data.asset_list || []).sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
-
-        assets.forEach((a: any) => {
-            if (a.blacklisted) return;
-            const symbol = a.symbol.toUpperCase();
-            if (symbol && a.image_url && !iconMap[symbol]) {
-                iconMap[symbol] = a.image_url;
-            }
-        });
-        
-        // Add manual overrides for major global assets if missing or specific preference
-        if (!iconMap['BTC']) iconMap['BTC'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/btc.png';
-        if (!iconMap['ETH']) iconMap['ETH'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/eth.png';
-        if (!iconMap['SOL']) iconMap['SOL'] = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/sol.png';
-        
-        return iconMap;
+        return (data.asset_list || []).sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
     } catch (e) {
         console.error('Failed to fetch Ston.fi assets:', e);
-        return {};
+        return [];
     }
 }
 
@@ -47,16 +32,34 @@ const CATEGORY_MAP: Record<string, string> = {
   'TON': 'Native', 'BTC': 'Crypto', 'ETH': 'Crypto', 'SOL': 'Crypto'
 };
 
-const resolveIcon = (symbol: string, assetsMap: Record<string, string>) => {
+
+const resolveAssetInfo = (symbol: string, assetsList: any[]) => {
     const upper = symbol.toUpperCase();
     const clean = upper.startsWith('1000') ? upper.replace('1000', '') : upper;
+
+    // Helper to find match
+    const find = (s: string) => assetsList.find((a: any) => a.symbol.toUpperCase() === s && !a.blacklisted);
+
+    let match = find(clean) || find(upper);
     
-    if (assetsMap[clean]) return assetsMap[clean];
-    if (assetsMap[upper]) return assetsMap[upper];
+    // Manual overrides for icon/address if needed
+    // Actually we just want the address mainly.
+    // If not found, we can return generic icon but empty address
     
-    // Fallback generic
-    return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/generic.png`;
+    let icon = match?.image_url;
+    if (!icon) {
+         if (upper === 'BTC') icon = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/btc.png';
+         else if (upper === 'ETH') icon = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/eth.png';
+         else if (upper === 'SOL') icon = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/sol.png';
+         else icon = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/generic.png`;
+    }
+
+    return {
+        icon,
+        address: match?.contract_address || null
+    };
 };
+
 
 // Simple in-memory cache
 let cachedPairs: any[] = [];
@@ -140,13 +143,14 @@ export async function GET(request: Request) {
 
             const isHot = apr > 100 || volume24h > 50000;
 
-            const icon = resolveIcon(base, stonFiAssets);
+            const { icon, address } = resolveAssetInfo(base, stonFiAssets);
             
             // Strict Validation: Ensure we have a valid icon (implies confirmed TON Native / Whitelisted asset)
             // If we fall back to generic, we assume it's not a verified token we want to list.
             if (icon.includes('generic.png') && base !== 'TON') {
                 return null;
             }
+
 
             return {
                 id,
@@ -161,7 +165,9 @@ export async function GET(request: Request) {
                 category,
                 icon, 
                 tvl: parseFloat(liquidity.toFixed(2)),
+                tokenAddress: address, // Pass address downstream
                 isHot
+
             };
         }).filter(Boolean);
 

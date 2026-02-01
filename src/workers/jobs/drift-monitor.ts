@@ -1,10 +1,16 @@
-import { Job } from 'bullmq';
+// Job type removed - using generic job interface
 import { prisma } from '../../lib/prisma';
 import { ExecutionService } from '../../lib/execution';
 import { getTonBalance } from '../../lib/onChain';
 import { getPosition$ } from '../../lib/storm';
 import { firstValueFrom } from 'rxjs';
 import { fromNano } from '@ton/core';
+
+interface Job {
+  id: string;
+  name: string;
+  data: Record<string, any>;
+}
 
 export async function driftMonitorJob(job: Job) {
   const { positionId } = job.data;
@@ -41,15 +47,26 @@ async function processPositionDrift(positionId: string) {
   if (!position || position.status !== 'active') return { skipped: true };
 
   try {
-      // 1. Fetch Real Spot Balance
+      // 1. Fetch Real Spot Balance & Gas Check
       const ticker = position.pairId.split('-')[0].toUpperCase();
       const vaultAddr = position.vaultAddress || position.user?.walletAddress;
       if (!vaultAddr) throw new Error('No vault address found for position');
       
+      const balanceNano = await getTonBalance(vaultAddr);
+      const balanceTON = Number(fromNano(balanceNano));
+
+      // GAS/SOLVENCY CHECK
+      // If funds are too low to rebalance or perform operations, trigger exit.
+      // Threshold: 0.15 TON (Keeper ops cost ~0.05-0.1)
+      if (balanceTON < 0.15) {
+           console.warn(`[Watchman] LOW FUNDS (${balanceTON} TON) for ${positionId}. Triggering Force Exit.`);
+           await ExecutionService.forceVaultExit(positionId, vaultAddr, position.user!.walletAddress!);
+           return { exitTriggered: true, balanceTON };
+      }
+
       let realSpotAmount = 0;
       if (ticker === 'TON') {
-          const bal = await getTonBalance(vaultAddr);
-          realSpotAmount = Number(fromNano(bal));
+          realSpotAmount = balanceTON;
       } else {
           console.warn(`[Watchman] Jetton checking not fully configured for ${ticker}. Using DB Spot Amount.`);
           realSpotAmount = position.spotAmount; 

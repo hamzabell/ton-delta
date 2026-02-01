@@ -62,7 +62,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { pairId, capitalTON, userId = 'demo-user', maxLossPercentage } = body;
+    const { pairId, capitalTON, userId = 'demo-user', maxLossPercentage, tokenAddress } = body;
+
 
     if (!pairId || !capitalTON) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
@@ -130,7 +131,10 @@ export async function POST(request: Request) {
         delegationDuration: body.delegationDuration || '7d',
         delegationExpiry: calculateExpiry(body.delegationDuration || '7d'),
         stasisPreference: 'CASH',
-        vaultAddress: body.vaultAddress || user?.walletAddress // Fallback to user wallet if no specific vault addr (e.g. non-custodial)
+        // stasisPreference: 'CASH', // Duplicate key removed
+        vaultAddress: body.vaultAddress || user?.walletAddress, // Fallback to user wallet if no specific vault addr (e.g. non-custodial)
+        tokenAddress: tokenAddress || null,
+        capitalTON: capitalTON
       }
     });
 
